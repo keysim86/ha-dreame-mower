@@ -612,22 +612,7 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                 self.name = device_info["name"]
             self.token = device_info["token"]
             self.device_id = device_info["did"]
-        elif self.account_type == "dreame":
-            if self.token is None:
-                self.token = " "  # device_info["token"]
-            if self.host is None:
-                self.host = device_info["bindDomain"]
-            if self.mac is None:
-                self.mac = device_info["mac"]
-            if self.model is None:
-                self.model = device_info["model"]
-            if self.name is None:
-                self.name = (
-                    device_info["customName"]
-                    if device_info["customName"] and len(device_info["customName"]) > 0
-                    else device_info["deviceInfo"]["displayName"]
-                )
-        elif self.account_type == "mova":
+        elif self.account_type == "dreame" or self.account_type == "mova":
             if self.token is None:
                 self.token = " "  # device_info["token"]
             if self.host is None:
