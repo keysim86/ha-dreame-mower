@@ -77,7 +77,8 @@ class DreameMowerDreameHomeCloudProtocol:
     def _api_call(self, url, params=None, retry_count=2):
         return self.request(
             f"{self.get_api_url()}/{url}",
-            json.dumps(params, separators=(",", ":")) if params is not None else None,
+            json.dumps(params, separators=(",", ":")
+                       ) if params is not None else None,
             retry_count,
         )
 
@@ -131,7 +132,8 @@ class DreameMowerDreameHomeCloudProtocol:
             if not self._client_connected:
                 self._client_connected = True
                 _LOGGER.debug("Connected to the device client")
-            client.subscribe(f"/{self._strings[7]}/{self._did}/{self._uid}/{self._model}/{self._country}/")
+            client.subscribe(
+                f"/{self._strings[7]}/{self._did}/{self._uid}/{self._model}/{self._country}/")
             if self._connected_callback:
                 try:
                     self._connected_callback()
@@ -150,7 +152,8 @@ class DreameMowerDreameHomeCloudProtocol:
             if self._client_connected:
                 if not self._client_connecting:
                     self._client_connecting = True
-                    _LOGGER.info("Device Client disconnected (%s) Reconnecting...", rc)
+                    _LOGGER.info(
+                        "Device Client disconnected (%s) Reconnecting...", rc)
                 self._reconnect_timer_cancel()
                 self._reconnect_timer = Timer(10, self._reconnect_timer_task)
                 self._reconnect_timer.start()
@@ -196,7 +199,7 @@ class DreameMowerDreameHomeCloudProtocol:
                         _LOGGER.debug("Connecting to the device client")
                         try:
                             host = self._host.split(":")
-                            self._client = Client(
+                            self._client = mqtt_client.Client(
                                 mqtt_client.CallbackAPIVersion.VERSION1,
                                 f"{self._strings[53]}{self._uid}{self._strings[54]}{DreameMowerDreameHomeCloudProtocol.get_random_agent_id()}{self._strings[54]}{host[0]}",
                                 clean_session=True,
@@ -227,7 +230,8 @@ class DreameMowerDreameHomeCloudProtocol:
         self._logged_in = False
 
         if self._strings is None:
-            self._strings = json.loads(zlib.decompress(base64.b64decode(DREAME_STRINGS), zlib.MAX_WBITS | 32))
+            self._strings = json.loads(zlib.decompress(
+                base64.b64decode(DREAME_STRINGS), zlib.MAX_WBITS | 32))
 
         try:
             if self._secondary_key:
@@ -259,10 +263,12 @@ class DreameMowerDreameHomeCloudProtocol:
                 if self._strings[18] in data:
                     self._key = data.get(self._strings[18])
                     self._secondary_key = data.get(self._strings[19])
-                    self._key_expire = time.time() + data.get(self._strings[20]) - 120
+                    self._key_expire = time.time(
+                    ) + data.get(self._strings[20]) - 120
                     self._logged_in = True
                     self._uuid = data.get("uid")
-                    self._location = data.get(self._strings[21], self._location)
+                    self._location = data.get(
+                        self._strings[21], self._location)
                     self._ti = data.get(self._strings[22], self._ti)
             else:
                 try:
@@ -286,7 +292,8 @@ class DreameMowerDreameHomeCloudProtocol:
         return self._logged_in
 
     def get_devices(self) -> Any:
-        response = self._api_call(f"{self._strings[23]}/{self._strings[24]}/{self._strings[27]}/{self._strings[28]}")
+        response = self._api_call(
+            f"{self._strings[23]}/{self._strings[24]}/{self._strings[27]}/{self._strings[28]}")
         _LOGGER.debug("DreameMowerDreameHomeCloudProtocol.get_devices %s", response)
         if response:
             if "data" in response and response["code"] == 0:
@@ -312,7 +319,8 @@ class DreameMowerDreameHomeCloudProtocol:
                         **data,
                     }
                 else:
-                    _LOGGER.debug("Get Device OTC Info Retrying with fallback... (%s)", response)
+                    _LOGGER.debug(
+                        "Get Device OTC Info Retrying with fallback... (%s)", response)
                     devices = self.get_devices()
                     if devices is not None:
                         found = list(
@@ -453,7 +461,8 @@ class DreameMowerDreameHomeCloudProtocol:
 
     def get_properties(self, keys):
         params = {"did": str(self._did), "keys": keys}
-        api_response = self._api_call(f"{self._strings[23]}/{self._strings[25]}/{self._strings[41]}", params)
+        api_response = self._api_call(
+            f"{self._strings[23]}/{self._strings[25]}/{self._strings[41]}", params)
         if api_response is None or "data" not in api_response:
             return None
 
@@ -483,7 +492,8 @@ class DreameMowerDreameHomeCloudProtocol:
             param_name = "aiid"
 
         params[param_name] = data_keys[1]
-        api_response = self._api_call(f"{self._strings[23]}/{self._strings[25]}/{self._strings[43]}", params)
+        api_response = self._api_call(
+            f"{self._strings[23]}/{self._strings[25]}/{self._strings[43]}", params)
         if api_response is None or "data" not in api_response or self._strings[33] not in api_response["data"]:
             return None
 
@@ -555,7 +565,7 @@ class DreameMowerDreameHomeCloudProtocol:
                 response = None
                 if self._connected:
                     _LOGGER.warning(
-                        "DreameMowerDreameHomeCloudProtocol.request: error: %s", str(ex))
+                        "Error while executing request: %s", str(ex))
 
         _LOGGER.debug("DreameMowerDreameHomeCloudProtocol.request response: %s", response)
         if response is not None:
@@ -568,7 +578,8 @@ class DreameMowerDreameHomeCloudProtocol:
                 _LOGGER.debug("Execute api call failed: Token Expired")
                 self.login()
             else:
-                _LOGGER.warn("Execute api call failed with response: %s", response.text)
+                _LOGGER.warn(
+                    "Execute api call failed with response: %s", response.text)
 
         if self._fail_count == 5:
             self._connected = False
@@ -649,7 +660,6 @@ class DreameMowerProtocol:
         if not self.device_cloud: 
             raise DeviceException("Cloud connection missing") from None
         
-        # TODO-BEGIN: Should this be handled in login()?
         if not self.device_cloud.logged_in:
             # Use different session for device cloud
             self.device_cloud.login()
@@ -662,7 +672,6 @@ class DreameMowerProtocol:
         if not self.device_cloud.logged_in:
             raise DeviceException(
                 "Unable to login to device over cloud") from None
-        # TODO-End
 
         def cloud_callback(response):
             if response is None:
@@ -680,7 +689,6 @@ class DreameMowerProtocol:
         if not self.device_cloud: 
             raise DeviceException("Cloud connection missing") from None
 
-        # TODO-BEGIN: Should this be handled in login()?
         if not self.device_cloud.logged_in:
             _LOGGER.info("send: Not logged in over cloud. Try to log in.")
             # Use different session for device cloud
@@ -696,7 +704,6 @@ class DreameMowerProtocol:
         if not self.device_cloud.logged_in:
             raise DeviceException(
                 "Unable to login to device over cloud") from None
-        # TODO-End
 
         _LOGGER.debug("DreameMowerProtocol.send %s %s", method, parameters)
         response = self.device_cloud.send(

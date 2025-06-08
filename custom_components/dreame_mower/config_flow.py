@@ -47,8 +47,8 @@ from .const import (
 )
 
 DREAME_MODELS = [
-    "dreame.mower.p2255",
-    "dreame.mower.g2422",
+    "dreame.mower.",
+    "mova.mower.",
 ]
 
 DREAMEHOME: Final = "Dreamehome Account"
@@ -78,7 +78,8 @@ class DreameMowerOptionsFlowHandler(OptionsFlow):
             else:
                 notify = []
 
-        data_schema = vol.Schema({vol.Required(CONF_NOTIFY, default=notify): cv.multi_select(NOTIFICATION)})
+        data_schema = vol.Schema(
+            {vol.Required(CONF_NOTIFY, default=notify): cv.multi_select(NOTIFICATION)})
         if data[CONF_USERNAME]:
             data_schema = data_schema.extend(
                 {
@@ -87,11 +88,13 @@ class DreameMowerOptionsFlowHandler(OptionsFlow):
                     ),
                     vol.Required(
                         CONF_ICON_SET,
-                        default=options.get(CONF_ICON_SET, next(iter(MAP_ICON_SET_LIST))),
+                        default=options.get(
+                            CONF_ICON_SET, next(iter(MAP_ICON_SET_LIST))),
                     ): vol.In(list(MAP_ICON_SET_LIST.keys())),
                     vol.Required(
                         CONF_MAP_OBJECTS,
-                        default=options.get(CONF_MAP_OBJECTS, list(MAP_OBJECTS.keys())),
+                        default=options.get(
+                            CONF_MAP_OBJECTS, list(MAP_OBJECTS.keys())),
                     ): cv.multi_select(MAP_OBJECTS),
                     vol.Required(CONF_SQUARE, default=options.get(CONF_SQUARE, False)): bool,
                     vol.Required(
@@ -159,7 +162,8 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({vol.Required(CONF_TYPE, default=DREAMEHOME): vol.In([DREAMEHOME, LOCAL])}),
+            data_schema=vol.Schema(
+                {vol.Required(CONF_TYPE, default=DREAMEHOME): vol.In([DREAMEHOME, LOCAL])}),
             errors={},
         )
 
@@ -197,7 +201,8 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                         self.account_type,
                     )
                 else:
-                    self.protocol.set_credentials(self.host, self.token, account_type=self.account_type)
+                    self.protocol.set_credentials(
+                        self.host, self.token, account_type=self.account_type)
 
                 if self.protocol.device_cloud:
                     self.protocol.device_cloud._did = self.device_id
@@ -221,7 +226,7 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                         }
                     )
 
-                if self.model in DREAME_MODELS:
+                if any(self.model.startswith(prefix) for prefix in DREAME_MODELS):
                     if self.name is None:
                         self.name = self.model
                     return await self.async_step_options()
@@ -303,14 +308,15 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                 elif self.protocol.cloud.logged_in is False:
                     errors["base"] = "login_error"
                 elif self.protocol.cloud.logged_in:
-                    persistent_notification.dismiss(self.hass, f"{DOMAIN}_{NOTIFICATION_ID_2FA_LOGIN}")
+                    persistent_notification.dismiss(
+                        self.hass, f"{DOMAIN}_{NOTIFICATION_ID_2FA_LOGIN}")
 
                     devices = await self.hass.async_add_executor_job(self.protocol.cloud.get_devices)
                     if devices:
                         found = list(
                             filter(
                                 lambda d: not d.get("parent_id")
-                                and (str(d["model"]) in DREAME_MODELS),
+                                and any(str(d["model"]).startswith(prefix) for prefix in DREAME_MODELS),
                                 devices,
                             )
                         )
@@ -331,7 +337,8 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
 
                         if self.devices:
                             if len(self.devices) == 1:
-                                self.extract_info(list(self.devices.values())[0])
+                                self.extract_info(
+                                    list(self.devices.values())[0])
                                 return await self.async_step_connect()
                             return await self.async_step_devices()
 
@@ -386,13 +393,15 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
                 if self.protocol.cloud.logged_in is False:
                     errors["base"] = "login_error"
                 elif self.protocol.cloud.logged_in:
-                    persistent_notification.dismiss(self.hass, f"{DOMAIN}_{NOTIFICATION_ID_2FA_LOGIN}")
+                    persistent_notification.dismiss(
+                        self.hass, f"{DOMAIN}_{NOTIFICATION_ID_2FA_LOGIN}")
 
                     devices = await self.hass.async_add_executor_job(self.protocol.cloud.get_devices)
                     if devices:
                         found = list(
                             filter(
-                                lambda d: str(d["model"]) in DREAME_MODELS,
+                                lambda d: any(str(d["model"]).startswith(
+                                    prefix) for prefix in DREAME_MODELS),
                                 devices["page"]["records"],
                             )
                         )
@@ -410,7 +419,8 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
 
                         if self.devices:
                             if len(self.devices) == 1:
-                                self.extract_info(list(self.devices.values())[0])
+                                self.extract_info(
+                                    list(self.devices.values())[0])
                                 return await self.async_step_connect()
                             return await self.async_step_devices()
 
@@ -440,7 +450,8 @@ class DreameMowerFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="devices",
-            data_schema=vol.Schema({vol.Required("devices"): vol.In(list(self.devices))}),
+            data_schema=vol.Schema(
+                {vol.Required("devices"): vol.In(list(self.devices))}),
             errors=errors,
         )
 
