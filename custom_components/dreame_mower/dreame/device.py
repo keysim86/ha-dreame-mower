@@ -2349,7 +2349,7 @@ class DreameMowerDevice:
 
             properties.extend(self._read_write_properties)
 
-            if not self.capability.dnd_task:
+            if not self.capability.dnd_task or not self.status.dnd_tasks:
                 properties.extend(
                     [
                         DreameMowerProperty.DND,
