@@ -1,8 +1,7 @@
 # Changelog
 
-## [Unreleased]
-
-## [1.8.3] - 2026-04-18
+## [1.0.0] - 2026-04-18
 
 ### Changed
-- Fork przejęty przez keysim86 — zaktualizowano README, LICENSE, linki i workflow CI/CD
+- Fork przejęty przez keysim86 — przemianowany na **ha-dreame-mower** (repo uniwersalne, nie tylko A1 Pro)
+- Zaktualizowano README, LICENSE, manifest.json oraz workflow CI/CD

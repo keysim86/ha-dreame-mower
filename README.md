@@ -1,7 +1,7 @@
 # Dreame Mower
 
-[![Release](https://img.shields.io/github/v/release/keysim86/ha-dreame-mower-a1-pro?style=flat-square&label=release)](https://github.com/keysim86/ha-dreame-mower-a1-pro/releases)
-[![Downloads](https://img.shields.io/github/downloads/keysim86/ha-dreame-mower-a1-pro/total?style=flat-square&label=downloads&color=orange)](https://github.com/keysim86/ha-dreame-mower-a1-pro/releases)
+[![Release](https://img.shields.io/github/v/release/keysim86/ha-dreame-mower?style=flat-square&label=release)](https://github.com/keysim86/ha-dreame-mower/releases)
+[![Downloads](https://img.shields.io/github/downloads/keysim86/ha-dreame-mower/total?style=flat-square&label=downloads&color=orange)](https://github.com/keysim86/ha-dreame-mower/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
 
 **Control your Dreame A1 Pro robotic lawn mower directly from Home Assistant.**
@@ -32,7 +32,7 @@ Start, stop, and dock your mower, monitor battery and charging status, and more 
 
 1. Open HACS in Home Assistant
 2. Click the 3 dots menu > **Custom repositories**
-3. Add `keysim86/ha-dreame-mower-a1-pro` as **Integration**
+3. Add `keysim86/ha-dreame-mower` as **Integration**
 4. Search for and install **Dreame Mower**
 5. Restart Home Assistant
 6. Go to **Settings** > **Integrations** > **Add Integration** > **Dreame Mower**
@@ -56,7 +56,7 @@ Use the same Dreame / Xiaomi account credentials as the Dreamehome app.
 | Dreame A2 1200 (`dreame.mower.g2568a`) | Working | Community |
 | Dreame A3 | Working | Community |
 
-If you try it on a different model, please [open an issue](https://github.com/keysim86/ha-dreame-mower-a1-pro/issues) to let me know how it goes!
+If you try it on a different model, please [open an issue](https://github.com/keysim86/ha-dreame-mower/issues) to let me know how it goes!
 
 > **Tip:** If login fails with "unknown error" using a Dreame account, try selecting **Mova** instead. Both use the same cloud backend but some accounts work better with one or the other.
 

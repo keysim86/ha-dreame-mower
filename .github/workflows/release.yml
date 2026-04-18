@@ -79,7 +79,7 @@ jobs:
           BODY=$(awk "/^## \[$VERSION_NO\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md | jq -Rs .)
           if echo "$VERSION_NO" | grep -q '-'; then PRERELEASE=true; else PRERELEASE=false; fi
           RESPONSE=$(curl -s -X POST \
-            "https://api.github.com/repos/keysim86/ha-dreame-mower-a1-pro/releases" \
+            "https://api.github.com/repos/keysim86/ha-dreame-mower/releases" \
             -H "Authorization: token $GH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"tag_name\": \"${{ steps.version.outputs.VERSION }}\", \"target_commitish\": \"main\", \"name\": \"Dreame Mower A1 Pro ${{ steps.version.outputs.VERSION }}\", \"body\": $BODY, \"prerelease\": $PRERELEASE}")
@@ -90,7 +90,7 @@ jobs:
             exit 1
           fi
           curl -s -X POST \
-            "https://uploads.github.com/repos/keysim86/ha-dreame-mower-a1-pro/releases/$RELEASE_ID/assets?name=${{ env.COMPONENT_NAME }}.zip" \
+            "https://uploads.github.com/repos/keysim86/ha-dreame-mower/releases/$RELEASE_ID/assets?name=${{ env.COMPONENT_NAME }}.zip" \
             -H "Authorization: token $GH_TOKEN" \
             -H "Content-Type: application/zip" \
             --data-binary "@custom_components/${{ env.COMPONENT_NAME }}/${{ env.COMPONENT_NAME }}.zip"
