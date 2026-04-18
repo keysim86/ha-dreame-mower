@@ -1,7 +1,7 @@
 # Dreame Mower A1 Pro
 
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
-[![GitHub Release](https://img.shields.io/github/v/release/nicolasglg/dreame-mower-a1-pro?style=flat-square)](https://github.com/nicolasglg/dreame-mower-a1-pro/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/keysim86/ha-dreame-mower-a1-pro?style=flat-square)](https://github.com/keysim86/ha-dreame-mower-a1-pro/releases)
 
 **Control your Dreame A1 Pro robotic lawn mower directly from Home Assistant.**
 
@@ -31,11 +31,11 @@ Start, stop, and dock your mower, monitor battery and charging status, and more 
 
 1. Open HACS in Home Assistant
 2. Click the 3 dots menu > **Custom repositories**
-3. Add `nicolasglg/dreame-mower-a1-pro` as **Integration**
+3. Add `keysim86/ha-dreame-mower-a1-pro` as **Integration**
 4. Search for and install **Dreame Mower A1 Pro**
 5. Restart Home Assistant
 6. Go to **Settings** > **Integrations** > **Add Integration** > **Dreame Mower**
-7. Want to make my day? Buy me a beer :) [![Buy Me A Beer](https://img.shields.io/badge/Buy%20Me%20A%20Beer-support-yellow?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/nicolasglg)
+7. Restart and configure the integration
 
 ### Manual
 
@@ -55,10 +55,10 @@ Use the same Dreame / Xiaomi account credentials as the Dreamehome app.
 | Dreame A2 1200 (`dreame.mower.g2568a`) | Working | Community |
 | Dreame A3 | Working | Community |
 
-If you try it on a different model, please [open an issue](https://github.com/nicolasglg/dreame-mower-a1-pro/issues) to let me know how it goes!
+If you try it on a different model, please [open an issue](https://github.com/keysim86/ha-dreame-mower-a1-pro/issues) to let me know how it goes!
 
 > **Tip:** If login fails with "unknown error" using a Dreame account, try selecting **Mova** instead. Both use the same cloud backend but some accounts work better with one or the other.
 
 ## Credits
 
-This integration is a fork of [dreame-mower](https://github.com/bhuebschen/dreame-mower) by [@bhuebschen](https://github.com/bhuebschen), itself based on [dreame-vacuum](https://github.com/Tasshack/dreame-vacuum) by [@Tasshack](https://github.com/Tasshack). It has been reworked to fix cloud connectivity issues, error code mapping, and entity availability specific to the Dreame A1 Pro outdoor mower.
+This integration is a fork of [dreame-mower-a1-pro](https://github.com/nicolasglg/dreame-mower-a1-pro) by [@nicolasglg](https://github.com/nicolasglg), itself based on [dreame-mower](https://github.com/bhuebschen/dreame-mower) by [@bhuebschen](https://github.com/bhuebschen) and [dreame-vacuum](https://github.com/Tasshack/dreame-vacuum) by [@Tasshack](https://github.com/Tasshack).
