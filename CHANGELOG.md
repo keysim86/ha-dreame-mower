@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.1] - 2026-04-18
+
+### Changed
+- Zsynchronizowano zmiany z upstream `nicolasglg/dreame-mova-mower`: sekcja scope of support, zaktualizowana tabela kompatybilności z opisami statusów i informacja o braku wsparcia dla MOVA
+
 ## [1.0.0] - 2026-04-18
 
 ### Changed
