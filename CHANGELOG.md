@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-04-19
+
+### Fixed
+- Binary sensory `has_saved_map` i `scheduled_clean` były unavailable — `is_on` odwoływało się do `self.description` zamiast `self.entity_description`
+- Encja **Current Map** (kamera) pokazywała "niedostępny" gdy kosiarka jest zadokowana bez połączenia z chmurą — usunięto wymóg `cloud_connected` przy ustawianiu stanu encji
+
 ## [1.1.0] - 2026-04-19
 
 ### Added
