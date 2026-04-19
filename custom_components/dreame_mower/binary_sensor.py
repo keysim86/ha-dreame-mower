@@ -74,6 +74,6 @@ class DreameMowerBinarySensorEntity(DreameMowerEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return true if binary sensor is on."""
-        if self.description.value_fn:
-            return bool(self.description.value_fn(None, self.device))
+        if self.entity_description.value_fn:
+            return bool(self.entity_description.value_fn(None, self.device))
         return False
