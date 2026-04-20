@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.10] - 2026-04-20
+
+### Fixed
+- `device.py`: `_build_map_data_from_zones_json` — `map_data.segments` ustawiane jako `None` gdy słownik segmentów był pusty, powodując crash `'NoneType' object has no attribute 'items'` w `lawn_mower.py:609`; zmieniono na zawsze przypisywać dict (nawet pusty)
+- `device.py`: `_build_map_data_from_zones_json` — `mowingAreas`, `forbiddenAreas`, `contours` ustawione na `null` w JSON powodowały crash `'NoneType' object has no attribute 'get'`; dodano `or {}` jako fallback przed `.get("value", [])`
+
 ## [1.1.9] - 2026-04-20
 
 ### Fixed

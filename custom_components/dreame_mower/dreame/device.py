@@ -1177,7 +1177,7 @@ class DreameMowerDevice:
             pixel_type = np.full((width, height), MapPixelType.OUTSIDE.value, dtype=np.uint8)
 
             segments = {}
-            mowing_areas = map_json.get("mowingAreas", {}).get("value", [])
+            mowing_areas = (map_json.get("mowingAreas") or {}).get("value", [])
             for entry in mowing_areas:
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_id = entry[0]
@@ -1216,7 +1216,7 @@ class DreameMowerDevice:
                 segments[zone_id] = seg
 
             no_go_areas = []
-            for entry in map_json.get("forbiddenAreas", {}).get("value", []):
+            for entry in (map_json.get("forbiddenAreas") or {}).get("value", []):
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_data = entry[1]
                 elif isinstance(entry, dict):
@@ -1235,7 +1235,7 @@ class DreameMowerDevice:
                 if len(path) >= 4:
                     no_go_areas.append(Area(path[0]["x"], path[0]["y"], path[1]["x"], path[1]["y"], path[2]["x"], path[2]["y"], path[3]["x"], path[3]["y"]))
 
-            for entry in map_json.get("contours", {}).get("value", []):
+            for entry in (map_json.get("contours") or {}).get("value", []):
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_data = entry[1]
                 elif isinstance(entry, dict):
@@ -1258,7 +1258,7 @@ class DreameMowerDevice:
             map_data.frame_type = 73
             map_data.dimensions = MapImageDimensions(top=by1, left=bx1, height=height, width=width, grid_size=grid_size)
             map_data.pixel_type = pixel_type
-            map_data.segments = segments if segments else None
+            map_data.segments = segments
             map_data.no_go_areas = no_go_areas if no_go_areas else None
             map_data.empty_map = len(segments) == 0
             map_data.saved_map = True
