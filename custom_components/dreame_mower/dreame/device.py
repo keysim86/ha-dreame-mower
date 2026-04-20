@@ -1088,10 +1088,16 @@ class DreameMowerDevice:
             self._map_manager.editor.refresh_map()
 
     def _build_map_from_cloud_data(self) -> None:
-        """Build map data from cloud MAP batch keys for A1 Pro (no MQTT map support)."""
+        """Build map data from cloud MAP batch keys or last history map for A1 Pro."""
         if not self.cloud_connected:
             return
 
+        if self._try_build_map_from_batch():
+            return
+        self._try_use_last_history_map()
+
+    def _try_build_map_from_batch(self) -> bool:
+        """Try to build map from MAP.0-MAP.N batch keys. Returns True on success."""
         try:
             raw_parts_by_idx = {}
             for batch_start in range(0, 256, 32):
@@ -1102,15 +1108,15 @@ class DreameMowerDevice:
                 found_in_batch = False
                 for i in range(batch_start, batch_start + 32):
                     val = response.get(f"MAP.{i}")
-                    if val:
+                    if val and val != "null":
                         raw_parts_by_idx[i] = val
                         found_in_batch = True
                 if not found_in_batch:
                     break
 
             if not raw_parts_by_idx:
-                _LOGGER.warning("No MAP data from cloud")
-                return
+                _LOGGER.info("MAP batch: brak danych (null lub puste)")
+                return False
 
             raw_parts = [raw_parts_by_idx[k] for k in sorted(raw_parts_by_idx)]
             _LOGGER.info(
@@ -1294,9 +1300,37 @@ class DreameMowerDevice:
                     "Map built from cloud data: %dx%d, %d zones, %d no-go areas",
                     width, height, len(segments), len(no_go_areas),
                 )
+                return True
 
         except Exception as ex:
-            _LOGGER.warning("Failed to build map from cloud data: %s", ex)
+            _LOGGER.warning("Failed to build map from batch data: %s", ex)
+        return False
+
+    def _try_use_last_history_map(self) -> None:
+        """Use most recent cleaning history map as static current map (fallback for A1 Pro)."""
+        if not self._map_manager:
+            return
+        try:
+            history = self.status._cleaning_history
+            if not history:
+                _LOGGER.info("Brak historii sesji do użycia jako mapa bazowa")
+                return
+            for entry in history:
+                if not entry.object_name:
+                    continue
+                _LOGGER.info("Używam ostatniej mapy historycznej jako current map: %s", entry.object_name)
+                map_data = self._map_manager.get_history_map(entry.object_name, entry.key)
+                if map_data:
+                    map_data.history_map = False
+                    map_data.last_updated = time.time()
+                    self._map_manager._map_data = map_data
+                    self._map_manager._ready = True
+                    self._map_manager._map_data_changed()
+                    _LOGGER.info("Mapa bazowa z historii załadowana pomyślnie")
+                    return
+            _LOGGER.info("Żadna historia sesji nie zwróciła danych mapy")
+        except Exception as ex:
+            _LOGGER.warning("Failed to load history map as base: %s", ex)
 
     def _populate_stats_from_history(self) -> None:
         """Calculate cumulative stats from cloud event history when siid:12 properties are unavailable."""
@@ -1439,6 +1473,9 @@ class DreameMowerDevice:
                         if self._map_manager:
                             self._map_manager.editor.refresh_map()
                         self._property_changed()
+
+                    if self._map_manager and self._map_manager._map_data is None:
+                        self._try_use_last_history_map()
 
             except Exception as ex:
                 _LOGGER.warning("Get Cleaning History failed!: %s", ex)

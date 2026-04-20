@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-04-20
+
+### Fixed
+- `device.py`: `_build_map_from_cloud_data` — obsługa wartości `"null"` w kluczach MAP (urządzenie idle); refaktor na `_try_build_map_from_batch` + `_try_use_last_history_map`
+- `device.py`: `_try_use_last_history_map` — gdy MAP batch zwraca null/brak danych (urządzenie śpi), ładuje ostatnią mapę z historii sesji jako statyczną current map; wywoływana też po załadowaniu historii czyszczenia
+
 ## [1.1.7] - 2026-04-20
 
 ### Fixed
