@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-04-20
+
+### Fixed
+- `map.py`: `_request_i_map` — rozbudowano fallback dreame_cloud: Próba 1 (OBJECT_NAME z get_properties) + Próba 2 (pochodna ścieżka `model/uid/did/0` przez `get_interim_file_url`); dodano szczegółowe logowanie aby ustalić który mechanizm działa dla A1 Pro
+
 ## [1.1.5] - 2026-04-20
 
 ### Fixed

@@ -348,20 +348,39 @@ class DreameMapMowerMapManager:
                 return True
             return False
 
-        # Fallback dla urzadzen dreame_cloud bez obslugi strumieniowania map (np. A1 Pro):
-        # probuj pobrac mape przez wlasciwosc OBJECT_NAME z chmury
+        # Fallback dla urzadzen dreame_cloud bez obslugi strumieniowania map (np. A1 Pro)
         if self._protocol.dreame_cloud:
             try:
+                # Próba 1: OBJECT_NAME z właściwości chmury
                 object_name_result = self._protocol.cloud.get_properties(DIID(DreameMowerProperty.OBJECT_NAME))
+                _LOGGER.info("get_properties(OBJECT_NAME): %s", object_name_result)
                 if object_name_result and len(object_name_result) > 0:
                     data = object_name_result[0]
                     value = data.get(MAP_PARAMETER_VALUE)
                     if value:
-                        _LOGGER.info("Fallback: pobieranie mapy przez OBJECT_NAME z chmury")
+                        _LOGGER.info("Fallback 1: OBJECT_NAME=%s", value)
                         self._add_cloud_map_data(None, value, data.get("updateDate"))
-                        return True
+                        if self._map_data is not None:
+                            return True
             except Exception as ex:
-                _LOGGER.warning("Fallback OBJECT_NAME failed: %s", ex)
+                _LOGGER.warning("Fallback 1 OBJECT_NAME failed: %s", ex)
+
+            try:
+                # Próba 2: pochodna ścieżka chmury model/uid/did/0
+                derived = self._protocol.cloud.object_name
+                _LOGGER.info("Fallback 2: derived object_name=%s", derived)
+                response = self._get_interim_file_data(derived)
+                if response:
+                    partial_map = self._decode_map_partial(response.decode())
+                    if partial_map:
+                        _LOGGER.info("Fallback 2: frame_type=%s frame_id=%s", partial_map.frame_type, partial_map.frame_id)
+                        if self._map_data is None or partial_map.frame_type == MapFrameType.I.value:
+                            self._add_map_data(partial_map)
+                            return True
+                else:
+                    _LOGGER.info("Fallback 2: brak odpowiedzi z chmury dla %s", derived)
+            except Exception as ex:
+                _LOGGER.warning("Fallback 2 derived path failed: %s", ex)
         else:
             self._request_map_from_cloud()
         return False
