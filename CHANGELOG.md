@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.11] - 2026-04-20
+
+### Added
+- Wersja integracji widoczna w info urządzenia HA (pole "oprogramowanie") jako `firmware · int. X.Y.Z`
+
 ## [1.1.10] - 2026-04-20
 
 ### Fixed

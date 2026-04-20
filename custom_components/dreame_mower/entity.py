@@ -13,8 +13,21 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import async_generate_entity_id
 
+import json
+import os
+
 from .coordinator import DreameMowerDataUpdateCoordinator
 from .const import DOMAIN, LOGGER
+
+def _integration_version() -> str:
+    try:
+        manifest_path = os.path.join(os.path.dirname(__file__), "manifest.json")
+        with open(manifest_path) as f:
+            return json.load(f).get("version", "")
+    except Exception:
+        return ""
+
+INTEGRATION_VERSION = _integration_version()
 from .dreame.const import ATTR_VALUE
 from .dreame import (
     DreameMowerDevice,
@@ -176,7 +189,7 @@ class DreameMowerEntity(CoordinatorEntity[DreameMowerDataUpdateCoordinator]):
                 name=self.device.name,
                 manufacturer=self.device.info.manufacturer,
                 model=self.device.info.model,
-                sw_version=self.device.info.firmware_version,
+                sw_version=f"{self.device.info.firmware_version} · int. {INTEGRATION_VERSION}" if INTEGRATION_VERSION else self.device.info.firmware_version,
                 hw_version=self.device.info.hardware_version,
             )
 
