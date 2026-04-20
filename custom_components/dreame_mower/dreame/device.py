@@ -1129,10 +1129,22 @@ class DreameMowerDevice:
             )
 
             raw_json = "".join(raw_parts)
+            map_data = self._build_map_data_from_zones_json(raw_json)
+            if map_data and self._map_manager:
+                self._set_current_map_data(map_data)
+                _LOGGER.info("Mapa zbudowana z batch MAP: %dx%d, %d stref", map_data.dimensions.width, map_data.dimensions.height, len(map_data.segments) if map_data.segments else 0)
+                return True
+
+        except Exception as ex:
+            _LOGGER.warning("Failed to build map from batch data: %s", ex)
+        return False
+
+    def _build_map_data_from_zones_json(self, raw_json: str):
+        """Parse A1 Pro zones JSON string and return a MapData object, or None on failure."""
+        try:
             decoder = json.JSONDecoder()
             map_json, _ = decoder.raw_decode(raw_json)
             if isinstance(map_json, list):
-                # MAP data is wrapped: [json_string, ...]
                 for item in map_json:
                     if isinstance(item, str):
                         try:
@@ -1146,8 +1158,12 @@ class DreameMowerDevice:
                         map_json = item
                         break
                 if isinstance(map_json, list):
-                    _LOGGER.warning("MAP JSON: no usable entry found in list")
-                    return
+                    _LOGGER.warning("MAP JSON: brak użytecznego wpisu w liście, preview: %s", raw_json[:200])
+                    return None
+            if not isinstance(map_json, dict):
+                _LOGGER.warning("MAP JSON: nieoczekiwany typ %s, preview: %s", type(map_json), raw_json[:200])
+                return None
+
             boundary = map_json.get("boundary", {})
             bx1 = boundary.get("x1", 0)
             by1 = boundary.get("y1", 0)
@@ -1178,18 +1194,13 @@ class DreameMowerDevice:
                 if not path or zone_id < 1 or zone_id > 62:
                     continue
 
-                poly_points = []
-                for pt in path:
-                    px = (pt["x"] - bx1) // grid_size
-                    py = (pt["y"] - by1) // grid_size
-                    poly_points.append((px, py))
+                poly_points = [(( pt["x"] - bx1) // grid_size, (pt["y"] - by1) // grid_size) for pt in path]
 
                 if len(poly_points) >= 3:
                     img = Image.new("L", (width, height), 0)
                     draw = ImageDraw.Draw(img)
                     draw.polygon(poly_points, fill=zone_id)
-                    mask = np.array(img).T
-                    pixel_type[mask > 0] = zone_id
+                    pixel_type[np.array(img).T > 0] = zone_id
 
                 xs = [pt["x"] for pt in path]
                 ys = [pt["y"] for pt in path]
@@ -1205,81 +1216,47 @@ class DreameMowerDevice:
                 segments[zone_id] = seg
 
             no_go_areas = []
-            forbidden = map_json.get("forbiddenAreas", {}).get("value", [])
-            for entry in forbidden:
+            for entry in map_json.get("forbiddenAreas", {}).get("value", []):
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_data = entry[1]
                 elif isinstance(entry, dict):
                     zone_data = entry
                 else:
                     continue
-
                 path = zone_data.get("path", [])
                 if not path:
                     continue
-
-                poly_points = []
-                for pt in path:
-                    px = (pt["x"] - bx1) // grid_size
-                    py = (pt["y"] - by1) // grid_size
-                    poly_points.append((px, py))
-
+                poly_points = [((pt["x"] - bx1) // grid_size, (pt["y"] - by1) // grid_size) for pt in path]
                 if len(poly_points) >= 3:
                     img = Image.new("L", (width, height), 0)
                     draw = ImageDraw.Draw(img)
                     draw.polygon(poly_points, fill=255)
-                    mask = np.array(img).T
-                    pixel_type[mask > 0] = MapPixelType.WALL.value
-
+                    pixel_type[np.array(img).T > 0] = MapPixelType.WALL.value
                 if len(path) >= 4:
-                    no_go_areas.append(Area(
-                        path[0]["x"], path[0]["y"],
-                        path[1]["x"], path[1]["y"],
-                        path[2]["x"], path[2]["y"],
-                        path[3]["x"], path[3]["y"],
-                    ))
+                    no_go_areas.append(Area(path[0]["x"], path[0]["y"], path[1]["x"], path[1]["y"], path[2]["x"], path[2]["y"], path[3]["x"], path[3]["y"]))
 
-            contours = map_json.get("contours", {}).get("value", [])
-            for entry in contours:
+            for entry in map_json.get("contours", {}).get("value", []):
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_data = entry[1]
                 elif isinstance(entry, dict):
                     zone_data = entry
                 else:
                     continue
-
                 path = zone_data.get("path", [])
                 if len(path) < 2:
                     continue
-
-                line_points = []
-                for pt in path:
-                    px = (pt["x"] - bx1) // grid_size
-                    py = (pt["y"] - by1) // grid_size
-                    line_points.append((px, py))
-
+                line_points = [((pt["x"] - bx1) // grid_size, (pt["y"] - by1) // grid_size) for pt in path]
                 img = Image.new("L", (width, height), 0)
                 draw = ImageDraw.Draw(img)
                 for i in range(len(line_points)):
-                    p1 = line_points[i]
-                    p2 = line_points[(i + 1) % len(line_points)]
-                    draw.line([p1, p2], fill=255, width=1)
-                mask = np.array(img).T
-                pixel_type[mask > 0] = MapPixelType.WALL.value
-
-            dimensions = MapImageDimensions(
-                top=by1,
-                left=bx1,
-                height=height,
-                width=width,
-                grid_size=grid_size,
-            )
+                    draw.line([line_points[i], line_points[(i + 1) % len(line_points)]], fill=255, width=1)
+                pixel_type[np.array(img).T > 0] = MapPixelType.WALL.value
 
             map_data = MapData()
             map_data.map_id = 1
             map_data.frame_id = 1
             map_data.frame_type = 73
-            map_data.dimensions = dimensions
+            map_data.dimensions = MapImageDimensions(top=by1, left=bx1, height=height, width=width, grid_size=grid_size)
             map_data.pixel_type = pixel_type
             map_data.segments = segments if segments else None
             map_data.no_go_areas = no_go_areas if no_go_areas else None
@@ -1288,26 +1265,24 @@ class DreameMowerDevice:
             map_data.saved_map_status = 2
             map_data.last_updated = time.time()
             map_data.rotation = 0
-
-            if self._map_manager:
-                self._map_manager._map_data = map_data
-                self._map_manager._saved_map_data[1] = map_data
-                self._map_manager._selected_map_id = 1
-                self._map_manager._current_map_id = 1
-                self._map_manager._ready = True
-                self._map_manager._map_data_changed()
-                _LOGGER.info(
-                    "Map built from cloud data: %dx%d, %d zones, %d no-go areas",
-                    width, height, len(segments), len(no_go_areas),
-                )
-                return True
-
+            return map_data
         except Exception as ex:
-            _LOGGER.warning("Failed to build map from batch data: %s", ex)
-        return False
+            _LOGGER.warning("_build_map_data_from_zones_json failed: %s", ex)
+            return None
+
+    def _set_current_map_data(self, map_data) -> None:
+        """Set map_data as current map in map manager and notify camera."""
+        if not self._map_manager:
+            return
+        self._map_manager._map_data = map_data
+        self._map_manager._saved_map_data[1] = map_data
+        self._map_manager._selected_map_id = 1
+        self._map_manager._current_map_id = 1
+        self._map_manager._ready = True
+        self._map_manager._map_data_changed()
 
     def _try_use_last_history_map(self) -> None:
-        """Use most recent cleaning history map as static current map (fallback for A1 Pro)."""
+        """Download last history map file (JSON format for A1 Pro) as static current map."""
         if not self._map_manager:
             return
         try:
@@ -1318,19 +1293,30 @@ class DreameMowerDevice:
             for entry in history:
                 if not entry.object_name:
                     continue
-                _LOGGER.info("Używam ostatniej mapy historycznej jako current map: %s", entry.object_name)
-                map_data = self._map_manager.get_history_map(entry.object_name, entry.key)
-                if map_data:
-                    map_data.history_map = False
-                    map_data.last_updated = time.time()
-                    self._map_manager._map_data = map_data
-                    self._map_manager._ready = True
-                    self._map_manager._map_data_changed()
-                    _LOGGER.info("Mapa bazowa z historii załadowana pomyślnie")
-                    return
-            _LOGGER.info("Żadna historia sesji nie zwróciła danych mapy")
+                _LOGGER.info("Próba załadowania mapy z historii: %s", entry.object_name)
+                try:
+                    if self._protocol.cloud.dreame_cloud:
+                        url = self._protocol.cloud.get_interim_file_url(entry.object_name)
+                    else:
+                        url = self._protocol.cloud.get_file_url(entry.object_name)
+                    if not url:
+                        continue
+                    raw_bytes = self._protocol.cloud.get_file(url)
+                    if not raw_bytes:
+                        continue
+                    raw_text = raw_bytes.decode("utf-8", errors="replace")
+                    _LOGGER.info("Plik historii pobrany: %d bajtów, preview: %s", len(raw_bytes), raw_text[:150])
+                    map_data = self._build_map_data_from_zones_json(raw_text)
+                    if map_data:
+                        self._set_current_map_data(map_data)
+                        _LOGGER.info("Mapa bazowa z historii załadowana: %s (%d stref)", entry.object_name, len(map_data.segments) if map_data.segments else 0)
+                        return
+                except Exception as ex:
+                    _LOGGER.warning("Historia %s nie powiodła się: %s", entry.object_name, ex)
+                    continue
+            _LOGGER.info("Żadna historia sesji nie dała użytecznych danych mapy")
         except Exception as ex:
-            _LOGGER.warning("Failed to load history map as base: %s", ex)
+            _LOGGER.warning("_try_use_last_history_map failed: %s", ex)
 
     def _populate_stats_from_history(self) -> None:
         """Calculate cumulative stats from cloud event history when siid:12 properties are unavailable."""

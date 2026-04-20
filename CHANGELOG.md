@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-04-20
+
+### Fixed
+- `device.py`: A1 Pro mapy historyczne to pliki JSON ze strefami (nie binarny format vacuum) — `get_history_map` (base64 decoder) crashował z `Incorrect padding`; dodano `_build_map_data_from_zones_json` i `_try_use_last_history_map` pobierający plik bezpośrednio przez `get_interim_file_url` + parsujący jako JSON stref; refaktor `_try_build_map_from_batch` używa tej samej metody
+
 ## [1.1.8] - 2026-04-20
 
 ### Fixed
