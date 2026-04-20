@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.13] - 2026-04-20
+
+### Fixed
+- `device.py`: Fałszywy błąd "Edge sensor error" wyświetlany przy powrocie kosiarki do ładowarki — A1 Pro wysyła kod 54/57 (EDGE/EDGE_2) jako status powrotu z niską baterią, nie jako rzeczywisty błąd czujnika; dodano do listy wykluczeń (zwraca `NO_ERROR`)
+
 ## [1.1.12] - 2026-04-20
 
 ### Fixed

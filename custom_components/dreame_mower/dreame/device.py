@@ -4759,6 +4759,8 @@ class DreameMowerDeviceStatus:
                 DreameMowerErrorCode.UNKNOWN_WARNING_2.value,
                 DreameMowerErrorCode.MOWING_COMPLETE.value,
                 DreameMowerErrorCode.TASK_CANCELLED.value,
+                DreameMowerErrorCode.EDGE.value,    # [MOWER] A1 Pro sends this when returning to charge (low battery)
+                DreameMowerErrorCode.EDGE_2.value,  # [MOWER] same as above, variant 2
             ):
                 return DreameMowerErrorCode.NO_ERROR
             return DreameMowerErrorCode(value)
