@@ -520,7 +520,7 @@ class DreameMowerCameraEntity(DreameMowerEntity, Camera):
         """Fetch state from the device."""
         self._last_map_request = 0
         map_data = self._map_data
-        if map_data and (self.map_index > 0 or self.device.status.located or self.device.status.docked):
+        if map_data and (self.map_index > 0 or self.device.status.located or self.device.status.docked or self.device.status.running):
             if map_data.last_updated:
                 self._state = datetime.fromtimestamp(int(map_data.last_updated))
             elif map_data.timestamp_ms:
@@ -631,7 +631,7 @@ class DreameMowerCameraEntity(DreameMowerEntity, Camera):
 
     def update(self) -> None:
         map_data = self._map_data
-        if map_data and (self.map_index > 0 or self.device.status.located or self.device.status.docked):
+        if map_data and (self.map_index > 0 or self.device.status.located or self.device.status.docked or self.device.status.running):
             self._device_active = self.device.status.active
             if map_data.last_updated:
                 self._state = datetime.fromtimestamp(int(map_data.last_updated))
@@ -874,7 +874,7 @@ class DreameMowerCameraEntity(DreameMowerEntity, Camera):
                 map_data
                 and self.device.cloud_connected
                 and not map_data.empty_map
-                and (self.map_index > 0 or self.device.status.located or self.device.status.docked)
+                and (self.map_index > 0 or self.device.status.located or self.device.status.docked or self.device.status.running)
             ):
                 attributes = map_data.as_dict()
                 if not attributes:

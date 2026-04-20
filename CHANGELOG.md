@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-04-20
+
+### Fixed
+- Mapa nie była renderowana gdy kosiarka kosi (`status = CLEANING`) a `relocation_status` nie był `LOCATED`/`UNKNOWN` — dodano `running` do warunku wyświetlania mapy w `camera.py`
+
 ## [1.1.2] - 2026-04-19
 
 ### Fixed
