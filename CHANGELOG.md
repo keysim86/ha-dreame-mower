@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.14] - 2026-04-20
+
+### Changed
+- `hacs.json`: zmieniono nazwę integracji z "Dreame Mower A1 Pro" na "Dreame Mower"
+
 ## [1.1.13] - 2026-04-20
 
 ### Fixed
