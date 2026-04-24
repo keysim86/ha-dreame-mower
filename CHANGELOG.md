@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.1.16] - 2026-04-24
+
+### Fixed
+- `device.py`: `docked` — A1 Pro po pełnym naładowaniu wysyła `charging_status = NOT_CHARGING` zamiast `CHARGING_COMPLETED`; dodano warunek `NOT_CHARGING + battery=100%` → kamera poprawnie wyświetla mapę gdy kosiarka jest zadokowana
+- `device.py`: `_set_current_map_data` — brakowało wywołania `_property_changed()` po ustawieniu mapy z chmury; kamera nie dostawała sygnału do odświeżenia widoku
+- `device.py`: `_request_cleaning_history` — po wykryciu nowej historii sesji odświeżany jest `CLEANING_COUNT` i statystyki z urządzenia (licznik sesji nie aktualizował się po zakończeniu koszenia)
+
 ## [1.1.15] - 2026-04-21
 
 ### Fixed

@@ -1308,6 +1308,7 @@ class DreameMowerDevice:
         self._map_manager._current_map_id = 1
         self._map_manager._ready = True
         self._map_manager._map_data_changed()
+        self._property_changed()
 
     def _try_use_last_history_map(self) -> None:
         """Download last history map file (JSON format for A1 Pro) as static current map."""
@@ -1490,6 +1491,16 @@ class DreameMowerDevice:
 
                     if self._map_manager and self._map_manager._map_data is None:
                         self._try_use_last_history_map()
+
+                    # Odśwież licznik sesji i statystyki z urządzenia po nowej historii
+                    try:
+                        self._request_properties([
+                            DreameMowerProperty.CLEANING_COUNT,
+                            DreameMowerProperty.TOTAL_CLEANING_TIME,
+                            DreameMowerProperty.TOTAL_CLEANED_AREA,
+                        ])
+                    except Exception:
+                        pass
 
             except Exception as ex:
                 _LOGGER.warning("Get Cleaning History failed!: %s", ex)
@@ -5054,6 +5065,8 @@ class DreameMowerDeviceStatus:
             (
                 self.charging
                 or self.charging_status is DreameMowerChargingStatus.CHARGING_COMPLETED
+                # A1 Pro: sends NOT_CHARGING after charging completes (not CHARGING_COMPLETED)
+                or (self.charging_status is DreameMowerChargingStatus.NOT_CHARGING and self.battery_level == 100)
             )
             and not (self.running and not self.returning and not self.fast_mapping and not self.cruising)
         )
