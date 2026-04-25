@@ -1357,29 +1357,45 @@ class DreameMowerDevice:
 
         try:
             diid = DIID(DreameMowerProperty.STATUS, self.property_mapping)
-            result = self._protocol.cloud.get_device_event(diid, 200, 0)
-            if not result:
-                return
 
             total_time = 0
             total_area = 0
             count = 0
             first_date = None
+            batch_size = 200
+            time_end = 9999999999
 
-            for data in result:
-                raw = json.loads(data.get("history") or data.get("value", "[]"))
-                props = {item["piid"]: item["value"] for item in raw if "piid" in item and "value" in item}
+            while True:
+                result = self._protocol.cloud.get_device_event(diid, batch_size, 0, time_end)
+                if not result:
+                    break
 
-                duration = props.get(2, 0)
-                area = props.get(3, 0)
-                timestamp = props.get(8, 0)
+                oldest_ts = None
+                for data in result:
+                    raw = json.loads(data.get("history") or data.get("value", "[]"))
+                    props = {item["piid"]: item["value"] for item in raw if "piid" in item and "value" in item}
 
-                if props:
-                    total_time += duration
-                    total_area += area
-                    count += 1
-                    if timestamp and (first_date is None or timestamp < first_date):
-                        first_date = timestamp
+                    duration = props.get(2, 0)
+                    area = props.get(3, 0)
+                    timestamp = props.get(8, 0)
+
+                    if props:
+                        total_time += duration
+                        total_area += area
+                        count += 1
+                        if timestamp:
+                            if first_date is None or timestamp < first_date:
+                                first_date = timestamp
+                            if oldest_ts is None or timestamp < oldest_ts:
+                                oldest_ts = timestamp
+
+                if len(result) < batch_size:
+                    break
+
+                if oldest_ts is None or oldest_ts >= time_end:
+                    break
+
+                time_end = oldest_ts - 1
 
             if count > 0:
                 self.data[DreameMowerProperty.CLEANING_COUNT.value] = count
