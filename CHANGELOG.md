@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.17] - 2026-04-25
+
+### Fixed
+- `device.py`: `_populate_stats_from_history` — pobieranie historii zdarzeń było ograniczone do 200 wpisów; przy większej liczbie sesji (np. 215) licznik, łączny czas i powierzchnia były zaniżone; wprowadzono paginację wsteczną po `time_end` pobierającą kolejne batche po 200 aż do wyczerpania historii
+
 ## [1.1.16] - 2026-04-24
 
 ### Fixed
