@@ -1357,7 +1357,7 @@ class DreameMowerDevice:
 
         try:
             diid = DIID(DreameMowerProperty.STATUS, self.property_mapping)
-            result = self._protocol.cloud.get_device_event(diid, 2000, 0)
+            result = self._protocol.cloud.get_device_event(diid, 500, 0)
             if not result:
                 return
 
@@ -5065,8 +5065,6 @@ class DreameMowerDeviceStatus:
             (
                 self.charging
                 or self.charging_status is DreameMowerChargingStatus.CHARGING_COMPLETED
-                # A1 Pro: sends NOT_CHARGING after charging completes (not CHARGING_COMPLETED)
-                or (self.charging_status is DreameMowerChargingStatus.NOT_CHARGING and self.battery_level == 100)
             )
             and not (self.running and not self.returning and not self.fast_mapping and not self.cruising)
         )

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.19] - 2026-05-28
+
+### Fixed
+- `device.py`: `docked` — przywrócono logikę z v1.1.14; warunek `NOT_CHARGING + battery=100%` powodował że kosiarka raportowała "zadokowana" gdy stała bezczynnie na trawniku z pełną baterią (np. po koszeniu bez powrotu do stacji)
+- `device.py`: `_populate_stats_from_history` — zmieniono limit zapytania z 2000 na 500; API Dreame Cloud może zwracać błąd przy zbyt dużym limicie co powodowało że statystyki nigdy się nie aktualizowały
+
 ## [1.1.18] - 2026-04-25
 
 ### Fixed
