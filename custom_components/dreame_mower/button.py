@@ -115,8 +115,8 @@ async def async_setup_entry(
         if description.exists_fn(description, coordinator.device)
     )
 
-    if coordinator.device.capability.shortcuts or coordinator.device.capability.backup_map:
-        update_buttons = partial(async_update_buttons, coordinator, {}, {}, async_add_entities)
+    if coordinator.device.capability.shortcuts or coordinator.device.capability.backup_map or coordinator.device.capability.map:
+        update_buttons = partial(async_update_buttons, coordinator, {}, {}, {}, async_add_entities)
         coordinator.async_add_listener(update_buttons)
         update_buttons()
 
@@ -127,6 +127,7 @@ def async_update_buttons(
     coordinator: DreameMowerDataUpdateCoordinator,
     current_shortcut: dict[str, list[DreameMowerShortcutButtonEntity]],
     current_map: dict[str, list[DreameMowerMapButtonEntity]],
+    current_zone: dict[int, list],
     async_add_entities,
 ) -> None:
     new_entities = []
@@ -178,6 +179,28 @@ def async_update_buttons(
             ]
 
             new_entities = new_entities + current_map[map_index]
+
+    if coordinator.device.capability.map:
+        segments = coordinator.device.status.segments or {}
+        new_zone_ids = set(segments.keys())
+        current_zone_ids = set(current_zone.keys())
+
+        for zone_id in current_zone_ids - new_zone_ids:
+            async_remove_buttons(zone_id, coordinator, current_zone)
+
+        for zone_id in new_zone_ids - current_zone_ids:
+            current_zone[zone_id] = [
+                DreameMowerZoneButtonEntity(
+                    coordinator,
+                    DreameMowerButtonEntityDescription(
+                        key="mow_zone",
+                        icon="mdi:grass",
+                        available_fn=lambda device: not device.status.started and not device.status.fast_mapping,
+                    ),
+                    zone_id,
+                )
+            ]
+            new_entities = new_entities + current_zone[zone_id]
 
     if new_entities:
         async_add_entities(new_entities)
@@ -344,4 +367,51 @@ class DreameMowerMapButtonEntity(DreameMowerEntity, ButtonEntity):
             "Unable to call %s",
             self.device.backup_map,
             self.device.get_map(self.map_index).map_id,
+        )
+
+
+class DreameMowerZoneButtonEntity(DreameMowerEntity, ButtonEntity):
+    """Defines a Dreame Mower Zone Button entity for per-zone mowing."""
+
+    def __init__(
+        self,
+        coordinator: DreameMowerDataUpdateCoordinator,
+        description: DreameMowerButtonEntityDescription,
+        zone_id: int,
+    ) -> None:
+        """Initialize a Dreame Mower Zone Button entity."""
+        self.zone_id = zone_id
+        self._zone_name = None
+        segments = coordinator.device.status.segments
+        if segments and zone_id in segments:
+            self._zone_name = segments[zone_id].name
+        super().__init__(coordinator, description)
+        self._set_id()
+        device_slug = self.device.name.lower().replace(" ", "_")
+        self._attr_unique_id = f"{self.device.mac}_mow_zone_{self.zone_id}"
+        self.entity_id = f"button.{device_slug}_mow_zone_{self.zone_id}"
+
+    def _set_id(self) -> None:
+        name = self._zone_name if self._zone_name else f"Zone {self.zone_id}"
+        self._attr_name = f"{self.device.name} Mow {name}"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        segments = self.device.status.segments
+        if segments and self.zone_id in segments:
+            new_name = segments[self.zone_id].name
+            if new_name != self._zone_name:
+                self._zone_name = new_name
+                self._set_id()
+        self.async_write_ha_state()
+
+    async def async_press(self, **kwargs: Any) -> None:
+        """Press the button to start mowing this zone."""
+        if not self.available:
+            raise HomeAssistantError("Entity unavailable")
+
+        await self._try_command(
+            "Unable to call %s",
+            self.device.clean_segment,
+            self.zone_id,
         )

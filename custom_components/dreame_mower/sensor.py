@@ -294,6 +294,22 @@ SENSORS: tuple[DreameMowerSensorEntityDescription, ...] = (
         value_fn=lambda value, device: device.info.version,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    DreameMowerSensorEntityDescription(
+        key="current_zone_id",
+        name="Current Zone ID",
+        icon="mdi:map-marker",
+        value_fn=lambda value, device: device.status.current_zone.segment_id if device.status.current_zone else None,
+        exists_fn=lambda description, device: device.capability.map,
+        available_fn=lambda device: device.status.current_zone is not None,
+    ),
+    DreameMowerSensorEntityDescription(
+        key="current_zone_state",
+        name="Current Zone",
+        icon="mdi:map-marker-radius",
+        value_fn=lambda value, device: device.status.current_zone.name if device.status.current_zone else None,
+        exists_fn=lambda description, device: device.capability.map,
+        available_fn=lambda device: device.status.current_zone is not None,
+    ),
 )
 
 

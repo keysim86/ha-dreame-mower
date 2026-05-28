@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 import time
 import traceback
@@ -95,6 +96,7 @@ class DreameMowerDataUpdateCoordinator(DataUpdateCoordinator[DreameMowerDevice])
         self._has_temporary_map = None
         self._two_factor_url = None
         self._properties_logged = False
+        self._cloud_retry_task: asyncio.Task | None = None
 
         LOGGER.info("Integration loading: %s", entry.data[CONF_NAME])
         self._device = DreameMowerDevice(
@@ -410,6 +412,25 @@ class DreameMowerDataUpdateCoordinator(DataUpdateCoordinator[DreameMowerDevice])
     def set_update_error(self, ex=None) -> None:
         self.hass.loop.call_soon_threadsafe(self.async_set_update_error, ex)
 
+    def _schedule_cloud_retry(self) -> None:
+        if self._cloud_retry_task and not self._cloud_retry_task.done():
+            return
+        self._cloud_retry_task = self.hass.loop.create_task(self._async_cloud_retry())
+
+    async def _async_cloud_retry(self) -> None:
+        await asyncio.sleep(60)
+        if self._device is None or not self._device.disconnected:
+            return
+        LOGGER.info("Attempting cloud reconnect after connection loss...")
+        try:
+            await self.hass.async_add_executor_job(self._device.update)
+            if not self._device.disconnected:
+                self._device.schedule_update()
+                LOGGER.info("Cloud reconnect succeeded")
+        except Exception as ex:
+            LOGGER.debug("Cloud reconnect failed, will retry: %s", ex)
+            self._schedule_cloud_retry()
+
     def set_updated_data(self, device=None) -> None:
         self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, device)
 
@@ -460,3 +481,5 @@ class DreameMowerDataUpdateCoordinator(DataUpdateCoordinator[DreameMowerDevice])
         if self._available:
             self._available = self._device and self._device.available
             super().async_set_update_error(ex)
+        if self._device and self._device.disconnected:
+            self._schedule_cloud_retry()

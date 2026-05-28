@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.1.21] - 2026-05-28
+
+### Added
+- `sensor.current_zone_id` — ID aktualnie koszonej strefy (dostępny gdy kosiarka kosi konkretną strefę)
+- `sensor.current_zone_state` — nazwa aktualnie koszonej strefy (np. "Zone A", "Trawnik przedni")
+- Dynamiczne przyciski `button.mow_zone_<id>` dla każdej strefy z mapy — umożliwiają uruchomienie koszenia wybranej strefy z poziomu HA; nazwy stref pobierane z API chmury
+- Automatyczny retry połączenia z chmurą — gdy kosiarka rozłączy się (disconnected), coordinator odczeka 60 s i automatycznie spróbuje wznowić połączenie
+
 ## [1.1.20] - 2026-05-28
 
 ### Fixed
