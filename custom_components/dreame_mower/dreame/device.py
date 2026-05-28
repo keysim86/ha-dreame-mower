@@ -1428,7 +1428,7 @@ class DreameMowerDevice:
             map_data.pixel_type = pixel_type
             map_data.segments = segments
             map_data.empty_map = False
-            map_data.saved_map = True
+            map_data.history_map = True
             map_data.saved_map_status = 2
             map_data.last_updated = time.time()
             map_data.rotation = 0

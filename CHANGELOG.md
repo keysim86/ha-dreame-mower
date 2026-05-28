@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.22-beta.6] - 2026-05-28
+
+### Fixed
+- `config_flow.py`: `DreameMowerOptionsFlowHandler.__init__` próbował ustawiać `self.config_entry` który jest read-only property w nowszych wersjach HA (`AttributeError: property has no setter`); usunięto ręczne `__init__` — HA wstrzykuje `config_entry` automatycznie do `OptionsFlow`
+- `device.py`: `_build_map_data_from_path_json` — zmieniono `saved_map=True` na `history_map=True`; przy `saved_map=True` renderer pomijał obliczanie `bounds` dla wymiarów mapy co mogło powodować błędy renderowania; `history_map=True` używa prawidłowej ścieżki gdzie `bounds` jest obliczane przez `_calculate_bounds`
+
 ## [1.1.22-beta.5] - 2026-05-28
 
 ### Added
