@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.20] - 2026-05-28
+
+### Fixed
+- `device.py`: usunięto `_property_changed()` po załadowaniu mapy z chmury — wywoływanie w złym momencie mogło przerywać pipeline aktualizacji encji MQTT (Battery Level, Charging Status, State pokazywały "niedostępny")
+- `device.py`: usunięto `_request_properties` po historii koszenia — dodatkowe zapytanie cloud mogło blokować połączenie MQTT powodując niedostępność sensorów live
+
 ## [1.1.19] - 2026-05-28
 
 ### Fixed
