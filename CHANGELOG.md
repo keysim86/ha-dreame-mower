@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.22-beta.4] - 2026-05-28
+
+### Fixed
+- `device.py`: `state` — A1 Pro wysyła `STATE=CHARGING` nawet po pełnym naładowaniu; dodano override analogiczny do `charging_status`: gdy `battery=100%` → zwróć `CHARGING_COMPLETED` zamiast `CHARGING`; eliminuje niespójność między sensorami State i Charging Status
+
 ## [1.1.22-beta.3] - 2026-05-28
 
 ### Fixed

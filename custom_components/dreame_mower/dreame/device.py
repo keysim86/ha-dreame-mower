@@ -4668,6 +4668,10 @@ class DreameMowerDeviceStatus:
                     ## Device will report idle when charging is completed and mower card will display return to dock icon even when robot is docked
                     if self.charging_status is DreameMowerChargingStatus.CHARGING_COMPLETED:
                         return DreameMowerState.CHARGING_COMPLETED
+            elif mower_state is DreameMowerState.CHARGING:
+                ## A1 Pro reports STATE=CHARGING even after full charge; align with charging_status override (battery=100% → CHARGING_COMPLETED)
+                if self.charging_status is DreameMowerChargingStatus.CHARGING_COMPLETED:
+                    return DreameMowerState.CHARGING_COMPLETED
             return mower_state
         if value is not None:
             _LOGGER.debug("STATE not supported: %s", value)
