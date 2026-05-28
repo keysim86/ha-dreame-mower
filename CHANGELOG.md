@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.22-beta.1] - 2026-05-28
+
+### Debug
+- `device.py`: tymczasowe logi WARNING w `_build_map_data_from_zones_json` — pokazują strukturę JSON stref zwróconą przez API (klucze, typ i zawartość `mowingAreas`, liczba i format wpisów); służy do diagnozy pustej mapy na A1 Pro
+
 ## [1.1.21] - 2026-05-28
 
 ### Added
