@@ -1131,6 +1131,9 @@ class DreameMowerDevice:
             raw_json = "".join(raw_parts)
             map_data = self._build_map_data_from_zones_json(raw_json)
             if map_data and self._map_manager:
+                if map_data.empty_map:
+                    _LOGGER.info("MAP batch: mapa bez stref (mowingAreas.value=[]), fallback do historii")
+                    return False
                 self._set_current_map_data(map_data)
                 _LOGGER.info("Mapa zbudowana z batch MAP: %dx%d, %d stref", map_data.dimensions.width, map_data.dimensions.height, len(map_data.segments) if map_data.segments else 0)
                 return True
@@ -1163,13 +1166,6 @@ class DreameMowerDevice:
             if not isinstance(map_json, dict):
                 _LOGGER.warning("MAP JSON: nieoczekiwany typ %s, preview: %s", type(map_json), raw_json[:200])
                 return None
-
-            _LOGGER.warning(
-                "MAP JSON klucze: %s | mowingAreas typ: %s | wartość: %s",
-                list(map_json.keys()),
-                type(map_json.get("mowingAreas")).__name__,
-                str(map_json.get("mowingAreas"))[:300],
-            )
 
             boundary = map_json.get("boundary") or {}
             bx1 = boundary.get("x1", 0)
@@ -1210,10 +1206,7 @@ class DreameMowerDevice:
 
             segments = {}
             mowing_areas_raw = map_json.get("mowingAreas")
-            if mowing_areas_raw:
-                _LOGGER.warning("MAP mowingAreas typ: %s, preview: %s", type(mowing_areas_raw).__name__, str(mowing_areas_raw)[:400])
             mowing_areas = (mowing_areas_raw or {}).get("value", []) if isinstance(mowing_areas_raw, dict) else (mowing_areas_raw if isinstance(mowing_areas_raw, list) else [])
-            _LOGGER.warning("MAP mowing_areas lista: %d wpisów, pierwszy: %s", len(mowing_areas), str(mowing_areas[0] if mowing_areas else None)[:300])
             for entry in mowing_areas:
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_id = entry[0]

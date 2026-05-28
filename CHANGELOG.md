@@ -2,10 +2,16 @@
 
 ## [Unreleased]
 
+## [1.1.22-beta.2] - 2026-05-28
+
+### Fixed
+- `device.py`: `_try_build_map_from_batch` — batch MAP zwraca mapę z pustym `mowingAreas.value=[]` (mapa bazowa bez stref); poprzednio kończyło się na tej mapie i nigdy nie wywoływano `_try_use_last_history_map`; teraz gdy mapa jest pusta, fallback do historii sesji gdzie A1 Pro przechowuje faktyczne strefy koszenia
+- `device.py`: `_build_map_data_from_zones_json` — obsługa `mowingAreas` zarówno gdy jest `dict` z kluczem `value` jak i bezpośrednio listą
+
 ## [1.1.22-beta.1] - 2026-05-28
 
 ### Debug
-- `device.py`: tymczasowe logi WARNING w `_build_map_data_from_zones_json` — pokazują strukturę JSON stref zwróconą przez API (klucze, typ i zawartość `mowingAreas`, liczba i format wpisów); służy do diagnozy pustej mapy na A1 Pro
+- `device.py`: tymczasowe logi WARNING w `_build_map_data_from_zones_json` — służyły do diagnozy pustej mapy na A1 Pro (usunięte w beta.2)
 
 ## [1.1.21] - 2026-05-28
 
