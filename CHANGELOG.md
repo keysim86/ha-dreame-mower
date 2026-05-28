@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [1.1.22] - 2026-05-28
+
+### Added
+- `sensor.current_zone_id` — ID aktualnie koszonej strefy (dostępny gdy kosiarka kosi konkretną strefę)
+- `sensor.current_zone_state` — nazwa aktualnie koszonej strefy
+- Dynamiczne przyciski `button.mow_zone_<id>` — uruchamianie koszenia wybranej strefy z poziomu HA
+- Automatyczny retry połączenia z chmurą po rozłączeniu (60 s opóźnienie)
+
+### Fixed
+- Kamera mapy (`Current Map`) — A1 Pro przechowuje historię sesji jako ścieżkę GPS (`map[0].data`), nie definicje stref; dodano parser `_build_map_data_from_path_json` który rysuje tę ścieżkę jako widzialną mapę ze strefą "Trawnik"
+- `device.py`: `state` — A1 Pro wysyła `STATE=CHARGING` nawet po pełnym naładowaniu; dodano override: gdy `battery=100%` → `CHARGING_COMPLETED`; eliminuje niespójność między sensorami State i Charging Status
+- `device.py`: `_try_build_map_from_batch` — batch MAP zwraca pustą mapę (`mowingAreas.value=[]`); teraz prawidłowy fallback do historii sesji
+- `config_flow.py`: błąd `AttributeError: property 'config_entry' has no setter` w nowszych wersjach HA; usunięto ręczne przypisanie w `__init__`
+
 ## [1.1.22-beta.6] - 2026-05-28
 
 ### Fixed
