@@ -1164,6 +1164,13 @@ class DreameMowerDevice:
                 _LOGGER.warning("MAP JSON: nieoczekiwany typ %s, preview: %s", type(map_json), raw_json[:200])
                 return None
 
+            _LOGGER.warning(
+                "MAP JSON klucze: %s | mowingAreas typ: %s | wartość: %s",
+                list(map_json.keys()),
+                type(map_json.get("mowingAreas")).__name__,
+                str(map_json.get("mowingAreas"))[:300],
+            )
+
             boundary = map_json.get("boundary") or {}
             bx1 = boundary.get("x1", 0)
             by1 = boundary.get("y1", 0)
@@ -1202,7 +1209,11 @@ class DreameMowerDevice:
             pixel_type = np.full((width, height), MapPixelType.OUTSIDE.value, dtype=np.uint8)
 
             segments = {}
-            mowing_areas = (map_json.get("mowingAreas") or {}).get("value", [])
+            mowing_areas_raw = map_json.get("mowingAreas")
+            if mowing_areas_raw:
+                _LOGGER.warning("MAP mowingAreas typ: %s, preview: %s", type(mowing_areas_raw).__name__, str(mowing_areas_raw)[:400])
+            mowing_areas = (mowing_areas_raw or {}).get("value", []) if isinstance(mowing_areas_raw, dict) else (mowing_areas_raw if isinstance(mowing_areas_raw, list) else [])
+            _LOGGER.warning("MAP mowing_areas lista: %d wpisów, pierwszy: %s", len(mowing_areas), str(mowing_areas[0] if mowing_areas else None)[:300])
             for entry in mowing_areas:
                 if isinstance(entry, list) and len(entry) >= 2:
                     zone_id = entry[0]
