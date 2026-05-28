@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.1.22-beta.3] - 2026-05-28
+
+### Fixed
+- `device.py`: `_try_use_last_history_map` — ten sam bug co w batch: mapa bez stref nie powinna być ustawiana; teraz gdy historia też ma `mowingAreas.value=[]`, próbuje kolejnej sesji zamiast zatrzymywać się na pustej mapie
+
+### Debug
+- `device.py`: tymczasowy log WARNING z pierwszymi 300 znakami każdego pobranego pliku historii — do diagnozy struktury JSON stref
+
 ## [1.1.22-beta.2] - 2026-05-28
 
 ### Fixed

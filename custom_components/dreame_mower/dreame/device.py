@@ -1337,12 +1337,15 @@ class DreameMowerDevice:
                     if not raw_bytes:
                         continue
                     raw_text = raw_bytes.decode("utf-8", errors="replace")
-                    _LOGGER.info("Plik historii pobrany: %d bajtów, preview: %s", len(raw_bytes), raw_text[:150])
+                    _LOGGER.warning("HIST plik: %d bajtów, preview: %s", len(raw_bytes), raw_text[:300])
                     map_data = self._build_map_data_from_zones_json(raw_text)
-                    if map_data:
+                    if map_data and not map_data.empty_map:
                         self._set_current_map_data(map_data)
                         _LOGGER.info("Mapa bazowa z historii załadowana: %s (%d stref)", entry.object_name, len(map_data.segments) if map_data.segments else 0)
                         return
+                    elif map_data and map_data.empty_map:
+                        _LOGGER.warning("HIST plik pusty (0 stref), próba następnej sesji: %s", entry.object_name)
+                        continue
                 except Exception as ex:
                     _LOGGER.warning("Historia %s nie powiodła się: %s", entry.object_name, ex)
                     continue
