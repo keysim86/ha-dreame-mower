@@ -1337,21 +1337,109 @@ class DreameMowerDevice:
                     if not raw_bytes:
                         continue
                     raw_text = raw_bytes.decode("utf-8", errors="replace")
-                    _LOGGER.warning("HIST plik: %d bajtów, preview: %s", len(raw_bytes), raw_text[:300])
                     map_data = self._build_map_data_from_zones_json(raw_text)
                     if map_data and not map_data.empty_map:
                         self._set_current_map_data(map_data)
-                        _LOGGER.info("Mapa bazowa z historii załadowana: %s (%d stref)", entry.object_name, len(map_data.segments) if map_data.segments else 0)
+                        _LOGGER.info("Mapa z historii (format stref): %s (%d stref)", entry.object_name, len(map_data.segments) if map_data.segments else 0)
                         return
-                    elif map_data and map_data.empty_map:
-                        _LOGGER.warning("HIST plik pusty (0 stref), próba następnej sesji: %s", entry.object_name)
-                        continue
+                    map_data = self._build_map_data_from_path_json(raw_text)
+                    if map_data:
+                        self._set_current_map_data(map_data)
+                        _LOGGER.info("Mapa z historii (format ścieżki): %s", entry.object_name)
+                        return
+                    _LOGGER.info("HIST plik bez danych mapy, próba następnej: %s", entry.object_name)
                 except Exception as ex:
                     _LOGGER.warning("Historia %s nie powiodła się: %s", entry.object_name, ex)
                     continue
             _LOGGER.info("Żadna historia sesji nie dała użytecznych danych mapy")
         except Exception as ex:
             _LOGGER.warning("_try_use_last_history_map failed: %s", ex)
+
+    def _build_map_data_from_path_json(self, raw_json: str):
+        """Parse A1 Pro history file (path format) into MapData.
+
+        History format: {"map": [{"area": N, "data": [[x,y], ...]}], "areas": M, ...}
+        The 'data' array is a dense GPS track of the mowing session.
+        """
+        try:
+            data = json.loads(raw_json)
+            map_entries = data.get("map", [])
+            if not map_entries or not isinstance(map_entries, list):
+                return None
+            coords = map_entries[0].get("data", []) if isinstance(map_entries[0], dict) else []
+            if not coords or len(coords) < 3:
+                return None
+
+            valid = [(pt[0], pt[1]) for pt in coords if isinstance(pt, (list, tuple)) and len(pt) >= 2]
+            if not valid:
+                return None
+
+            xs = [p[0] for p in valid]
+            ys = [p[1] for p in valid]
+
+            margin = 300
+            bx1 = min(xs) - margin
+            by1 = min(ys) - margin
+            bx2 = max(xs) + margin
+            by2 = max(ys) + margin
+
+            grid_size = 50
+            width = max(1, (bx2 - bx1) // grid_size + 1)
+            height = max(1, (by2 - by1) // grid_size + 1)
+
+            if width * height > 4_000_000:
+                return None
+
+            pixel_type = np.full((width, height), MapPixelType.OUTSIDE.value, dtype=np.uint8)
+
+            zone_id = 1
+            path_pix = [
+                (int((x - bx1) // grid_size), int((y - by1) // grid_size))
+                for x, y in valid
+            ]
+            path_pix = [(max(0, min(w, width - 1)), max(0, min(h, height - 1))) for w, h in path_pix]
+
+            img = Image.new("L", (width, height), 0)
+            draw = ImageDraw.Draw(img)
+            if len(path_pix) > 1:
+                draw.line(path_pix, fill=zone_id, width=3)
+            else:
+                draw.point(path_pix, fill=zone_id)
+            pixel_type[np.array(img).T > 0] = zone_id
+
+            seg = Segment(
+                segment_id=zone_id,
+                x0=min(xs), y0=min(ys),
+                x1=max(xs), y1=max(ys),
+                x=(min(xs) + max(xs)) // 2,
+                y=(min(ys) + max(ys)) // 2,
+                custom_name="Trawnik",
+            )
+            seg.color_index = 0
+            segments = {zone_id: seg}
+
+            map_data = MapData()
+            map_data.map_id = 1
+            map_data.frame_id = 1
+            map_data.frame_type = 73
+            map_data.dimensions = MapImageDimensions(
+                top=by1, left=bx1, height=height, width=width, grid_size=grid_size
+            )
+            map_data.pixel_type = pixel_type
+            map_data.segments = segments
+            map_data.empty_map = False
+            map_data.saved_map = True
+            map_data.saved_map_status = 2
+            map_data.last_updated = time.time()
+            map_data.rotation = 0
+            _LOGGER.info(
+                "MAP ścieżka: %d punktów, %dx%d pikseli, bbox (%d,%d)-(%d,%d)",
+                len(valid), width, height, bx1, by1, bx2, by2,
+            )
+            return map_data
+        except Exception as ex:
+            _LOGGER.warning("_build_map_data_from_path_json failed: %s", ex)
+            return None
 
     def _populate_stats_from_history(self) -> None:
         """Calculate cumulative stats from cloud event history when siid:12 properties are unavailable."""

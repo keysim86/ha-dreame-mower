@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.22-beta.5] - 2026-05-28
+
+### Added
+- `device.py`: `_build_map_data_from_path_json` — nowy parser formatu historii A1 Pro; historia sesji przechowuje ścieżkę GPS (`map[0].data` = lista par `[x,y]`), nie definicje stref; parser rysuje tę ścieżkę jako widzialną mapę (jeden syntetyczny segment "Trawnik" z narysowaną trasą)
+- `device.py`: `_try_use_last_history_map` — próbuje obu formatów: najpierw stref, potem ścieżki GPS
+
 ## [1.1.22-beta.4] - 2026-05-28
 
 ### Fixed
