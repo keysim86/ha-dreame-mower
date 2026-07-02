@@ -60,6 +60,7 @@ from .types import (
     GoToZoneSettings,
     Path,
     PathType,
+    Point,
     Coordinate,
     ATTR_ACTIVE_AREAS,
     ATTR_ACTIVE_POINTS,
@@ -428,6 +429,19 @@ class DreameMowerDevice:
                     del self._dirty_data[did]
 
                 current_value = self.data.get(did)
+
+                # A1 Pro firmware undercounts lifetime stats (siid:12) — keep the higher
+                # history-derived values (earlier timestamp for FIRST_CLEANING_DATE)
+                if current_value is not None and isinstance(value, (int, float)):
+                    if did == DreameMowerProperty.FIRST_CLEANING_DATE.value:
+                        if value > current_value:
+                            continue
+                    elif did in (
+                        DreameMowerProperty.CLEANING_COUNT.value,
+                        DreameMowerProperty.TOTAL_CLEANING_TIME.value,
+                        DreameMowerProperty.TOTAL_CLEANED_AREA.value,
+                    ) and value < current_value:
+                        continue
 
                 if current_value != value:
                     # Do not call external listener when map and json properties changed
@@ -1466,12 +1480,14 @@ class DreameMowerDevice:
             first_date = None
 
             for data in result:
-                raw = json.loads(data.get("history") or data.get("value", "[]"))
-                props = {item["piid"]: item["value"] for item in raw if "piid" in item and "value" in item}
-
-                duration = props.get(2, 0)
-                area = props.get(3, 0)
-                timestamp = props.get(8, 0)
+                try:
+                    raw = json.loads(data.get("history") or data.get("value", "[]"))
+                    props = {item["piid"]: item["value"] for item in raw if "piid" in item and "value" in item}
+                    duration = int(props.get(2) or 0)
+                    area = int(props.get(3) or 0)
+                    timestamp = int(props.get(8) or 0)
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    continue
 
                 if duration > 0:
                     total_time += duration
@@ -1480,17 +1496,36 @@ class DreameMowerDevice:
                     if timestamp and (first_date is None or timestamp < first_date):
                         first_date = timestamp
 
-            existing_count = self.get_property(DreameMowerProperty.CLEANING_COUNT)
-            if count > 0 and (existing_count is None or count >= existing_count):
-                self.data[DreameMowerProperty.CLEANING_COUNT.value] = count
-                self.data[DreameMowerProperty.TOTAL_CLEANING_TIME.value] = total_time
-                self.data[DreameMowerProperty.TOTAL_CLEANED_AREA.value] = total_area // 100
+            if count > 0:
+                # Merge per property: history and siid:12 both undercount in different
+                # ways, so keep the maximum (earliest timestamp for the first date)
+                merged = {
+                    DreameMowerProperty.CLEANING_COUNT.value: max(
+                        count, self.get_property(DreameMowerProperty.CLEANING_COUNT) or 0
+                    ),
+                    DreameMowerProperty.TOTAL_CLEANING_TIME.value: max(
+                        total_time, self.get_property(DreameMowerProperty.TOTAL_CLEANING_TIME) or 0
+                    ),
+                    DreameMowerProperty.TOTAL_CLEANED_AREA.value: max(
+                        total_area // 100, self.get_property(DreameMowerProperty.TOTAL_CLEANED_AREA) or 0
+                    ),
+                }
                 if first_date:
-                    self.data[DreameMowerProperty.FIRST_CLEANING_DATE.value] = first_date
+                    existing_date = self.get_property(DreameMowerProperty.FIRST_CLEANING_DATE)
+                    merged[DreameMowerProperty.FIRST_CLEANING_DATE.value] = (
+                        min(first_date, existing_date) if existing_date else first_date
+                    )
+                changed = False
+                for did, value in merged.items():
+                    if self.data.get(did) != value:
+                        self.data[did] = value
+                        changed = True
                 _LOGGER.info(
-                    "Stats from history: %d sessions (siid:12=%s), %d min, %d m², first=%s",
-                    count, existing_count, total_time, total_area // 100, first_date,
+                    "Stats from history: %d sessions, %d min, %d m², first=%s (changed=%s)",
+                    count, total_time, total_area // 100, first_date, changed,
                 )
+                if changed and self._ready:
+                    self._property_changed()
         except Exception as ex:
             _LOGGER.warning("Failed to populate stats from history: %s", ex)
 
@@ -1511,6 +1546,8 @@ class DreameMowerDevice:
             self._cleaning_history_update = 0
 
             _LOGGER.info("Get Cleaning History")
+            # Refresh lifetime stats together with the history (connect + after each task)
+            self._populate_stats_from_history()
             try:
                 # Limit the results
                 max = 25
@@ -1807,7 +1844,7 @@ class DreameMowerDevice:
                         self._build_map_from_cloud_data()
 
                 if self.cloud_connected:
-                    self._populate_stats_from_history()
+                    # _request_cleaning_history refreshes lifetime stats as well
                     self._cleaning_history_update = -1
                     self._request_cleaning_history()
                     if (self.capability.ai_detection and not self.status.ai_policy_accepted) or True:

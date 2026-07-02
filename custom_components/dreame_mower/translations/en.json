@@ -155,7 +155,7 @@
           "high_frequency": "High Frequency",
           "low_frequency": "Low Frequency"
         }
-      },      
+      },
       "mop_pad_swing": {
         "state": {
           "off": "Off",
@@ -214,8 +214,8 @@
       "cleangenius": {
         "state": {
           "off": "Off",
-          "routine_cleaning": "Routine Cleaning",
-          "deep_cleaning": "Deep Cleaning"
+          "routine_cleaning": "Routine Mowing",
+          "deep_cleaning": "Deep Mowing"
         }
       },
       "auto_recleaning": {
@@ -277,12 +277,12 @@
           "auto_emptying": "Auto-Emptying",
           "remote_control": "Remote controlling",
           "smart_charging": "Smart charging",
-          "second_cleaning": "Second time cleaning",
+          "second_cleaning": "Second time mowing",
           "human_following": "Human following",
-          "spot_cleaning": "Spot cleaning",
+          "spot_cleaning": "Spot mowing",
           "returning_auto_empty": "Returning to Auto-Empty",
           "waiting_for_task": "Waiting for task",
-          "station_cleaning": "Station cleaning",
+          "station_cleaning": "Station mowing",
           "returning_to_drain": "Returning to drain",
           "draining": "Draining",
           "auto_water_draining": "Auto water draining",
@@ -297,10 +297,10 @@
           "unknown": "Unknown",
           "idle": "Idle",
           "paused": "Paused",
-          "cleaning": "Cleaning",
+          "cleaning": "Mowing",
           "returning": "Returning to dock",
-          "spot_cleaning": "Spot cleaning",
-          "follow_wall_cleaning": "Follow wall cleaning",
+          "spot_cleaning": "Spot mowing",
+          "follow_wall_cleaning": "Follow wall mowing",
           "charging": "Charging",
           "ota": "OTA",
           "fct": "FCT",
@@ -314,7 +314,7 @@
           "factory_test": "Factory test",
           "standby": "Standby",
           "room_cleaning": "Zone mowing",
-          "zone_cleaning": "Zone cleaning",
+          "zone_cleaning": "Zone mowing",
           "fast_mapping": "Fast mapping",
           "cruising_path": "Cruising on path",
           "cruising_point": "Cruising to a point",
@@ -328,16 +328,16 @@
         "state": {
           "unknown": "Unknown",
           "completed": "Completed",
-          "cleaning": "Cleaning",
-          "zone_cleaning": "Zone cleaning",
+          "cleaning": "Mowing",
+          "zone_cleaning": "Zone mowing",
           "room_cleaning": "Zone mowing",
-          "spot_cleaning": "Spot cleaning",
+          "spot_cleaning": "Spot mowing",
           "fast_mapping": "Fast mapping",
-          "cleaning_paused": "Cleaning paused",
+          "cleaning_paused": "Mowing paused",
           "room_cleaning_paused": "Zone mowing paused",
-          "zone_cleaning_paused": "Zone cleaning paused",
-          "spot_cleaning_paused": "Spot cleaning paused",
-          "map_cleaning_paused": "Map cleaning paused",
+          "zone_cleaning_paused": "Zone mowing paused",
+          "spot_cleaning_paused": "Spot mowing paused",
+          "map_cleaning_paused": "Map mowing paused",
           "docking_paused": "Docking paused",
           "mopping_paused": "Mopping paused",
           "zone_mopping_paused": "Zone mopping paused",
@@ -402,7 +402,7 @@
           "no_tank_box": "Water tank not installed",
           "water_box_empty": "Water tank is empty",
           "box_full": "The filter not dry or blocked",
-          "brush": "The main brush wrapped",
+          "brush": "The blades are wrapped",
           "side_brush": "The side brush wrapped",
           "fan": "The filter not dry or blocked",
           "left_wheel_motor": "The robot is stuck, or its left wheel may be blocked by foreign objects",
@@ -541,20 +541,20 @@
       },
       "task_type": {
         "state": {
-          "standard": "Standard cleaning",
-          "standard_paused": "Standard cleaning paused",
-          "custom": "Custom cleaning",
-          "custom_paused": "Custom cleaning paused",
-          "shortcut": "Shortcut cleaning",
-          "shortcut_paused": "Shortcut cleaning paused",
-          "scheduled": "Scheduled cleaning",
-          "scheduled_paused": "Scheduled cleaning paused",
-          "smart": "Smart cleaning",
-          "smart_paused": "Smart cleaning paused",
-          "partial": "Partial cleaning",
-          "partial_paused": "Partial cleaning paused",
-          "summon": "Summon cleaning",
-          "summon_paused": "Summon cleaning paused",
+          "standard": "Standard mowing",
+          "standard_paused": "Standard mowing paused",
+          "custom": "Custom mowing",
+          "custom_paused": "Custom mowing paused",
+          "shortcut": "Shortcut mowing",
+          "shortcut_paused": "Shortcut mowing paused",
+          "scheduled": "Scheduled mowing",
+          "scheduled_paused": "Scheduled mowing paused",
+          "smart": "Smart mowing",
+          "smart_paused": "Smart mowing paused",
+          "partial": "Partial mowing",
+          "partial_paused": "Partial mowing paused",
+          "summon": "Summon mowing",
+          "summon_paused": "Summon mowing paused",
           "water_stain": "Water stain cleaning",
           "water_stain_paused": "Water stain cleaning paused"
         }
@@ -586,7 +586,7 @@
     },
     "mower_clean_zone": {
       "name": "Clean Zone",
-      "description": "Start the cleaning operation in the selected area.",
+      "description": "Start the mowing operation in the selected area.",
       "fields": {
         "zone": {
           "name": "Zone",
@@ -608,7 +608,7 @@
     },
     "mower_clean_spot": {
       "name": "Clean Spot",
-      "description": "Start the cleaning operation in the selected points on the map.",
+      "description": "Start the mowing operation in the selected points on the map.",
       "fields": {
         "points": {
           "name": "Points",
@@ -829,17 +829,17 @@
       }
     },
     "mower_set_cleaning_sequence": {
-      "name": "Set Cleaning Sequence",
+      "name": "Set Mowing Sequence",
       "description": "Set zone mowing sequence. (Only on supported devices)",
       "fields": {
         "cleaning_sequence": {
-          "name": "Cleaning sequence",
-          "description": "Segment ID list of cleaning sequence."
+          "name": "Mowing sequence",
+          "description": "Segment ID list of mowing sequence."
         }
       }
     },
     "mower_set_custom_cleaning": {
-      "name": "Set Custom Cleaning",
+      "name": "Set Custom Mowing",
       "description": "Set custom cleaning parameters. (Only on supported devices)",
       "fields": {
         "segment_id": {
@@ -855,8 +855,8 @@
           "description": "Water volume for each zone."
         },
         "cleaning_mode": {
-          "name": "Cleaning Mode",
-          "description": "Cleaning mode for each zone."
+          "name": "Mowing Mode",
+          "description": "Mowing mode for each zone."
         },
         "repeats": {
           "name": "Repeats",

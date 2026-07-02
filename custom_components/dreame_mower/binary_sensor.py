@@ -34,6 +34,7 @@ BINARY_SENSORS: tuple[DreameMowerBinarySensorEntityDescription, ...] = (
     ),
     DreameMowerBinarySensorEntityDescription(
         key="scheduled_clean",
+        name="Scheduled Mow",
         icon="mdi:calendar-clock",
         value_fn=lambda value, device: device.status.scheduled_clean,
         entity_category=EntityCategory.DIAGNOSTIC,

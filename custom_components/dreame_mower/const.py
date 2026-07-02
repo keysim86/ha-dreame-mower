@@ -32,8 +32,8 @@ MAP_OBJECTS: Final = {
     "name": "Zone Names",
     "name_background": "Zone Name Background",
     "order": "Zone Order",
-    "cleaning_times": "Zone Cleaning Times",
-    "cleaning_mode": "Zone Cleaning Mode",
+    "cleaning_times": "Zone Mowing Times",
+    "cleaning_mode": "Zone Mowing Mode",
     "path": "Path",
     "no_go": "No Go Zones",
     "virtual_wall": "Virtual Walls",
@@ -42,7 +42,7 @@ MAP_OBJECTS: Final = {
     "active_point": "Active Points",
     "charger": "Charger Icon",
     "robot": "Robot Icon",
-    "cleaning_direction": "Cleaning Direction",
+    "cleaning_direction": "Mowing Direction",
     "obstacle": "AI Obstacle",
     "pet": "Pet",
     "material": "Floor Material",
@@ -50,7 +50,7 @@ MAP_OBJECTS: Final = {
     "cruise_point": "Cruise Points",
 }
 NOTIFICATION: Final = {
-    "cleanup_completed": "Cleanup Completed",
+    "cleanup_completed": "Mowing Completed",
     "consumable": "Consumable",
     "information": "Information",
     "warning": "Warning",

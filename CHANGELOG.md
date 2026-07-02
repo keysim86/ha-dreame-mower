@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+- `device.py`: **regresja mapy z v1.1.24** — brakujący import `Point` powodował `NameError` w `_build_map_data_from_path_json`, przez co mapa z historii w ogóle się nie budowała (Current Map "brak aktywności", Saved Map niedostępny, Current Zone niedostępny); dodano import
+- `device.py`: statystyki (`CLEANING_COUNT`, `TOTAL_CLEANING_TIME`, `TOTAL_CLEANED_AREA`) — cykliczny odczyt properties nadpisywał wartości z historii chmury z powrotem zaniżonymi licznikami firmware (siid:12); dodano guard w `_handle_properties` (przyjmuj tylko wartości większe, dla `FIRST_CLEANING_DATE` wcześniejsze) oraz scalanie per-property przez max/min w `_populate_stats_from_history`
+- `device.py`: statystyki odświeżają się teraz razem z historią koszenia (przy połączeniu i po każdym ukończonym zadaniu), a nie tylko raz przy starcie; parsowanie pojedynczych rekordów historii odporne na błędne dane
+
+### Changed
+- Nazwy encji: Clean/Cleaning/Cleaned → Mow/Mowing/Mowed (np. "Mowing Count", "Total Mowed Area", "Total Mowing Time", "First Mowing Date", "Scheduled Mow", "Mowing Mode") — zmienione tylko nazwy wyświetlane, entity_id bez zmian
+- `translations/en.json`: przeniesiono 39 zmian terminologii cleaning→mowing z v1.1.23, które trafiły tylko do `strings.json` (HA dla custom integracji czyta wyłącznie `translations/*.json`, więc dotąd nie były widoczne w UI)
+- `translations/pl.json`: stany kosiarki po polsku — "Koszenie" zamiast "Sprzątanie/Czyszczenie" (status, task_status, task_type, CleanGenius, błędy tras); terminologia mopa/odkurzacza w nieużywanych przez kosiarkę kluczach bez zmian
+
 ## [1.1.25] - 2026-07-02
 
 ### Fixed
