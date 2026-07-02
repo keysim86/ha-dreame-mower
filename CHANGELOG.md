@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.27] - 2026-07-02
+
+### Fixed
+- `device.py`: mapa pokazywała jedną sztuczną strefę "Trawnik" zamiast rzeczywistych stref — `_try_build_map_from_batch` sklejał wszystkie klucze `MAP.0-255` i parsował tylko pierwszy dokument JSON (często starą/pustą mapę); teraz każdy klucz parsowany osobno, a spośród kandydatów wybierana jest mapa z największą liczbą stref (aktywna map2 z Zone 1/2/3)
+- `device.py`: gdy jeden klucz zawiera listę kilku zapisanych map, wybierany jest wpis z niepustymi `mowingAreas` (największą liczbą stref), nie pierwszy z brzegu
+- `device.py`: pozycja robota nie aktualizowała się podczas koszenia — historia sesji odświeżała się tylko po zakończonym zadaniu, więc mapa w kółko budowała się ze STAREJ sesji; teraz historia odświeża się co 60 s podczas koszenia, a mapa przebudowywana jest też raz po zakończeniu sesji (domyka ślad i pozycję)
+
+### Added
+- `device.py`: `_overlay_robot_position` — na mapie stref (batch MAP) nanoszona jest pozycja robota z ostatniego punktu GPS śladu oraz wyliczany `robot_segment` (strefa, w której robot faktycznie stoi)
+- `device.py`: `current_zone` korzysta teraz z `robot_segment` niezależnie od `lidar_navigation` — Current Zone pokazuje rzeczywistą strefę (także po zadokowaniu, jeśli dok leży w strefie); fallback na `active_segments` podczas koszenia bez zmian
+- Logi diagnostyczne: "MAP kandydat (klucz N): X stref: [...]" i "Pozycja robota z historii: (x, y), strefa=N" — pozwalają zweryfikować w logach HA, co zwraca chmura
+
 ## [1.1.26] - 2026-07-02
 
 ### Fixed

@@ -190,6 +190,8 @@ class DreameMowerDevice:
         self._last_change: float = 0  # Last property change time
         self._last_update_failed: float = 0  # Last update failed time
         self._cleaning_history_update: float = 0  # Cleaning history update time
+        self._last_cleaning_history_fetch: float = 0  # Last actual history fetch from cloud
+        self._history_map_dirty: bool = False  # Rebuild history map once after history change
         self._update_fail_count: int = 0  # Update failed counter
         self._map_select_time: float = None
         # Map Manager object. Only available when cloud connection is present
@@ -1142,43 +1144,76 @@ class DreameMowerDevice:
                 ("".join(raw_parts))[:200],
             )
 
-            raw_json = "".join(raw_parts)
-            map_data = self._build_map_data_from_zones_json(raw_json)
-            if map_data and self._map_manager:
-                if map_data.empty_map:
-                    _LOGGER.info("MAP batch: mapa bez stref (mowingAreas.value=[]), fallback do historii")
-                    return False
+            # Each MAP.i key may hold a standalone saved map (multiple map slots — the
+            # active one is not necessarily the first) or a chunk of one large document.
+            # Try every key separately first, then the concatenation as fallback.
+            candidates = []
+            for idx in sorted(raw_parts_by_idx):
+                map_data = self._build_map_data_from_zones_json(raw_parts_by_idx[idx], quiet=True)
+                if map_data and not map_data.empty_map:
+                    candidates.append((idx, map_data))
+            if not candidates:
+                map_data = self._build_map_data_from_zones_json("".join(raw_parts))
+                if map_data and not map_data.empty_map:
+                    candidates.append((-1, map_data))
+
+            if candidates and self._map_manager:
+                for idx, md in candidates:
+                    _LOGGER.info(
+                        "MAP kandydat (klucz %s): %d stref: %s",
+                        idx, len(md.segments), [s.name for s in md.segments.values()],
+                    )
+                # The active map is unknown from cloud data — prefer the one with the
+                # most zones, on a tie the highest key index (newest slot)
+                idx, map_data = sorted(candidates, key=lambda c: (len(c[1].segments), c[0]))[-1]
+                self._overlay_robot_position(map_data)
                 self._set_current_map_data(map_data)
-                _LOGGER.info("Mapa zbudowana z batch MAP: %dx%d, %d stref", map_data.dimensions.width, map_data.dimensions.height, len(map_data.segments) if map_data.segments else 0)
+                _LOGGER.info(
+                    "Mapa zbudowana z batch MAP (klucz %s): %dx%d, %d stref",
+                    idx, map_data.dimensions.width, map_data.dimensions.height, len(map_data.segments),
+                )
                 return True
+
+            _LOGGER.info("MAP batch: żaden klucz nie zawiera stref, fallback do historii")
 
         except Exception as ex:
             _LOGGER.warning("Failed to build map from batch data: %s", ex)
         return False
 
-    def _build_map_data_from_zones_json(self, raw_json: str):
-        """Parse A1 Pro zones JSON string and return a MapData object, or None on failure."""
+    @staticmethod
+    def _zones_json_zone_count(map_json) -> int:
+        """Number of mowing zones in a parsed map document."""
+        raw = map_json.get("mowingAreas")
+        value = (raw or {}).get("value", []) if isinstance(raw, dict) else (raw if isinstance(raw, list) else [])
+        return len(value)
+
+    def _build_map_data_from_zones_json(self, raw_json: str, quiet: bool = False):
+        """Parse A1 Pro zones JSON string and return a MapData object, or None on failure.
+
+        With quiet=True parse failures log at debug level (speculative per-key attempts).
+        """
+        log = _LOGGER.debug if quiet else _LOGGER.warning
         try:
             decoder = json.JSONDecoder()
             map_json, _ = decoder.raw_decode(raw_json)
             if isinstance(map_json, list):
+                # A list may hold several stringified map documents (multiple saved
+                # maps) — prefer the one with the most mowing zones, not the first
+                found = []
                 for item in map_json:
                     if isinstance(item, str):
                         try:
-                            parsed = json.loads(item)
-                            if isinstance(parsed, dict) and ("boundary" in parsed or "mowingAreas" in parsed):
-                                map_json = parsed
-                                break
+                            item = json.loads(item)
                         except (json.JSONDecodeError, ValueError):
                             continue
-                    elif isinstance(item, dict) and ("boundary" in item or "mowingAreas" in item):
-                        map_json = item
-                        break
-                if isinstance(map_json, list):
-                    _LOGGER.warning("MAP JSON: brak użytecznego wpisu w liście, preview: %s", raw_json[:200])
+                    if isinstance(item, dict) and ("boundary" in item or "mowingAreas" in item):
+                        found.append(item)
+                if not found:
+                    log("MAP JSON: brak użytecznego wpisu w liście, preview: %s", raw_json[:200])
                     return None
+                map_json = max(found, key=self._zones_json_zone_count)
             if not isinstance(map_json, dict):
-                _LOGGER.warning("MAP JSON: nieoczekiwany typ %s, preview: %s", type(map_json), raw_json[:200])
+                log("MAP JSON: nieoczekiwany typ %s, preview: %s", type(map_json), raw_json[:200])
                 return None
 
             boundary = map_json.get("boundary") or {}
@@ -1313,8 +1348,57 @@ class DreameMowerDevice:
             map_data.rotation = 0
             return map_data
         except Exception as ex:
-            _LOGGER.warning("_build_map_data_from_zones_json failed: %s", ex)
+            log("_build_map_data_from_zones_json failed: %s", ex)
             return None
+
+    def _get_last_track_point(self):
+        """Return the last GPS point (x, y) from the newest history session file, or None."""
+        try:
+            history = self.status._cleaning_history
+            if not history:
+                return None
+            for entry in history:
+                if not entry.object_name:
+                    continue
+                if self._protocol.cloud.dreame_cloud:
+                    url = self._protocol.cloud.get_interim_file_url(entry.object_name)
+                else:
+                    url = self._protocol.cloud.get_file_url(entry.object_name)
+                if not url:
+                    continue
+                raw_bytes = self._protocol.cloud.get_file(url)
+                if not raw_bytes:
+                    continue
+                data = json.loads(raw_bytes.decode("utf-8", errors="replace"))
+                map_entries = data.get("map", [])
+                coords = map_entries[0].get("data", []) if map_entries and isinstance(map_entries[0], dict) else []
+                valid = [(pt[0], pt[1]) for pt in coords if isinstance(pt, (list, tuple)) and len(pt) >= 2]
+                if valid:
+                    return valid[-1]
+            return None
+        except Exception as ex:
+            _LOGGER.debug("_get_last_track_point failed: %s", ex)
+            return None
+
+    def _overlay_robot_position(self, map_data) -> None:
+        """Set robot position (and the zone it is in) on a map from the newest GPS track."""
+        point = self._get_last_track_point()
+        if not point or map_data.dimensions is None:
+            return
+        x, y = point
+        map_data.robot_position = Point(x=x, y=y, a=0)
+        dim = map_data.dimensions
+        px = int((x - dim.left) // dim.grid_size)
+        py = int((y - dim.top) // dim.grid_size)
+        if (
+            map_data.pixel_type is not None
+            and 0 <= px < dim.width
+            and 0 <= py < dim.height
+        ):
+            seg = int(map_data.pixel_type[px, py])
+            if map_data.segments and seg in map_data.segments:
+                map_data.robot_segment = seg
+        _LOGGER.info("Pozycja robota z historii: (%d, %d), strefa=%s", x, y, map_data.robot_segment)
 
     def _set_current_map_data(self, map_data) -> None:
         """Set map_data as current map in map manager and notify camera."""
@@ -1351,7 +1435,7 @@ class DreameMowerDevice:
                     if not raw_bytes:
                         continue
                     raw_text = raw_bytes.decode("utf-8", errors="replace")
-                    map_data = self._build_map_data_from_zones_json(raw_text)
+                    map_data = self._build_map_data_from_zones_json(raw_text, quiet=True)
                     if map_data and not map_data.empty_map:
                         self._set_current_map_data(map_data)
                         _LOGGER.info("Mapa z historii (format stref): %s (%d stref)", entry.object_name, len(map_data.segments) if map_data.segments else 0)
@@ -1450,6 +1534,7 @@ class DreameMowerDevice:
             if valid:
                 last_x, last_y = valid[-1]
                 map_data.robot_position = Point(x=last_x, y=last_y, a=0)
+                map_data.robot_segment = zone_id
             _LOGGER.info(
                 "MAP ścieżka: %d punktów, %dx%d pikseli, bbox (%d,%d)-(%d,%d)",
                 len(valid), width, height, bx1, by1, bx2, by2,
@@ -1531,9 +1616,17 @@ class DreameMowerDevice:
 
     def _request_cleaning_history(self) -> None:
         """Get and parse the cleaning history from cloud event data and set it to memory"""
-        if (
-            self.cloud_connected
-            and self._cleaning_history_update != 0
+        if not self.cloud_connected:
+            return
+        # While mowing refresh periodically so the current session (and the robot
+        # position derived from its GPS track) shows up without waiting for the end
+        forced = self._cleaning_history_update == -1
+        refresh_while_running = (
+            self.status.started
+            and time.time() - self._last_cleaning_history_fetch >= 60
+        )
+        if refresh_while_running or (
+            self._cleaning_history_update != 0
             and (
                 self._cleaning_history_update == -1
                 or self.status._cleaning_history is None
@@ -1544,10 +1637,12 @@ class DreameMowerDevice:
             )
         ):
             self._cleaning_history_update = 0
+            self._last_cleaning_history_fetch = time.time()
 
             _LOGGER.info("Get Cleaning History")
-            # Refresh lifetime stats together with the history (connect + after each task)
-            self._populate_stats_from_history()
+            if forced or not refresh_while_running:
+                # Refresh lifetime stats together with the history (connect + after each task)
+                self._populate_stats_from_history()
             try:
                 # Limit the results
                 max = 25
@@ -1592,6 +1687,7 @@ class DreameMowerDevice:
                         _LOGGER.info("Cleaning History Changed")
                         self.status._cleaning_history = cleaning_history
                         self.status._cleaning_history_attrs = None
+                        self._history_map_dirty = True
                         if cleaning_history:
                             self.status._last_cleaning_time = cleaning_history[0].date.replace(
                                 tzinfo=datetime.now().astimezone().tzinfo
@@ -2646,10 +2742,12 @@ class DreameMowerDevice:
             self._map_manager.set_update_interval(self._map_update_interval)
             self._map_manager.set_device_running(self.status.running, self.status.docked and not self.status.started)
 
-            # Odswiezaj mape z chmury co 30s podczas koszenia (A1 Pro - brak strumieniowania MQTT)
-            if self.status.running and self.cloud_connected:
+            # Odswiezaj mape z chmury co 30s podczas koszenia (A1 Pro - brak strumieniowania
+            # MQTT); po zmianie historii (koniec sesji) przebuduj raz, by domknac slad i pozycje
+            if self.cloud_connected and (self.status.running or self._history_map_dirty):
                 last = self._map_manager._map_data.last_updated if self._map_manager._map_data else 0
-                if not last or (time.time() - last) > 30:
+                if self._history_map_dirty or not last or (time.time() - last) > 30:
+                    self._history_map_dirty = False
                     self._build_map_from_cloud_data()
 
         if self.cloud_connected:
@@ -5714,12 +5812,14 @@ class DreameMowerDeviceStatus:
     def current_zone(self) -> Segment | None:
         """Return the segment that device is currently on"""
         current_map = self.current_map
-        if self._capability.lidar_navigation:
-            if current_map and current_map.segments and current_map.robot_segment and not current_map.empty_map:
-                return current_map.segments[current_map.robot_segment]
-        # Fallback for GPS-based devices (A1 Pro, lidar_navigation=False) without real-time
-        # robot_segment: derive current zone from active_segments when mowing is active
-        if current_map and current_map.segments and not current_map.empty_map and self.started:
+        if not current_map or not current_map.segments or current_map.empty_map:
+            return None
+        # robot_segment is set by lidar map data and by the GPS history overlay
+        if current_map.robot_segment and current_map.robot_segment in current_map.segments:
+            return current_map.segments[current_map.robot_segment]
+        # Fallback for GPS-based devices (A1 Pro) without a resolvable robot_segment:
+        # derive current zone from active_segments when mowing is active
+        if self.started:
             active = self.active_segments
             if active and len(active) == 1 and active[0] in current_map.segments:
                 return current_map.segments[active[0]]
