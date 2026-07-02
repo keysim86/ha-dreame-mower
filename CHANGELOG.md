@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.26] - 2026-07-02
 
 ### Fixed
 - `device.py`: **regresja mapy z v1.1.24** — brakujący import `Point` powodował `NameError` w `_build_map_data_from_path_json`, przez co mapa z historii w ogóle się nie budowała (Current Map "brak aktywności", Saved Map niedostępny, Current Zone niedostępny); dodano import
