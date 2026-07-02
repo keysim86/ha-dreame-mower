@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.1.23] - 2026-07-02
+
+### Added
+- `sensor.battery_level` — dodano atrybut `icon` z dynamiczną ikoną baterii (ładowanie / poziom); port upstream v1.8.4
+
+### Changed
+- `strings.json` — zmieniono terminologię w wartościach wyświetlanych użytkownikowi: `cleaning`/`Cleaning` → `mowing`/`Mowing` (np. "Zone mowing", "Standard mowing"); klucze JSON bez zmian, entity IDs nie pękają; port upstream v1.8.7
+
 ## [1.1.22] - 2026-05-28
 
 ### Added
