@@ -5676,18 +5676,18 @@ class DreameMowerDeviceStatus:
     @property
     def current_zone(self) -> Segment | None:
         """Return the segment that device is currently on"""
+        current_map = self.current_map
         if self._capability.lidar_navigation:
-            current_map = self.current_map
             if current_map and current_map.segments and current_map.robot_segment and not current_map.empty_map:
                 return current_map.segments[current_map.robot_segment]
-            # Fallback for GPS-based devices (A1 Pro) without real-time robot_segment:
-            # derive current zone from active_segments when exactly one segment is active
-            if current_map and current_map.segments and not current_map.empty_map and self.started:
-                active = self.active_segments
-                if active and len(active) == 1 and active[0] in current_map.segments:
-                    return current_map.segments[active[0]]
-                if len(current_map.segments) == 1:
-                    return next(iter(current_map.segments.values()))
+        # Fallback for GPS-based devices (A1 Pro, lidar_navigation=False) without real-time
+        # robot_segment: derive current zone from active_segments when mowing is active
+        if current_map and current_map.segments and not current_map.empty_map and self.started:
+            active = self.active_segments
+            if active and len(active) == 1 and active[0] in current_map.segments:
+                return current_map.segments[active[0]]
+            if len(current_map.segments) == 1:
+                return next(iter(current_map.segments.values()))
 
     @property
     def cleaning_sequence(self) -> list[int] | None:

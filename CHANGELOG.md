@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.1.25] - 2026-07-02
+
+### Fixed
+- `device.py`: `current_zone` — fallback na `active_segments` był wewnątrz bloku `if lidar_navigation`, który dla A1 Pro (ma `MAP_SAVING` → `lidar_navigation=False`) był pomijany w całości; przeniesiono fallback poza ten blok — sensor Current Zone / Current Zone ID działa teraz poprawnie podczas koszenia
+
 ## [1.1.24] - 2026-07-02
 
 ### Fixed
