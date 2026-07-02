@@ -1432,6 +1432,10 @@ class DreameMowerDevice:
             map_data.saved_map_status = 2
             map_data.last_updated = time.time()
             map_data.rotation = 0
+            # Set last known GPS position as robot position (30s delayed during active mowing)
+            if valid:
+                last_x, last_y = valid[-1]
+                map_data.robot_position = Point(x=last_x, y=last_y, a=0)
             _LOGGER.info(
                 "MAP ścieżka: %d punktów, %dx%d pikseli, bbox (%d,%d)-(%d,%d)",
                 len(valid), width, height, bx1, by1, bx2, by2,
@@ -1442,10 +1446,11 @@ class DreameMowerDevice:
             return None
 
     def _populate_stats_from_history(self) -> None:
-        """Calculate cumulative stats from cloud event history when siid:12 properties are unavailable."""
-        if self.get_property(DreameMowerProperty.CLEANING_COUNT) is not None:
-            return
+        """Calculate cumulative stats from cloud event history.
 
+        Always runs and overrides siid:12 values when history reports more sessions —
+        firmware counters on A1 Pro undercount compared to the Dreame app.
+        """
         if not self.cloud_connected:
             return
 
@@ -1475,15 +1480,16 @@ class DreameMowerDevice:
                     if timestamp and (first_date is None or timestamp < first_date):
                         first_date = timestamp
 
-            if count > 0:
+            existing_count = self.get_property(DreameMowerProperty.CLEANING_COUNT)
+            if count > 0 and (existing_count is None or count >= existing_count):
                 self.data[DreameMowerProperty.CLEANING_COUNT.value] = count
                 self.data[DreameMowerProperty.TOTAL_CLEANING_TIME.value] = total_time
                 self.data[DreameMowerProperty.TOTAL_CLEANED_AREA.value] = total_area // 100
                 if first_date:
                     self.data[DreameMowerProperty.FIRST_CLEANING_DATE.value] = first_date
                 _LOGGER.info(
-                    "Stats calculated from history: %d sessions, %d min, %d area, first=%s",
-                    count, total_time, total_area, first_date,
+                    "Stats from history: %d sessions (siid:12=%s), %d min, %d m², first=%s",
+                    count, existing_count, total_time, total_area // 100, first_date,
                 )
         except Exception as ex:
             _LOGGER.warning("Failed to populate stats from history: %s", ex)
@@ -5674,6 +5680,14 @@ class DreameMowerDeviceStatus:
             current_map = self.current_map
             if current_map and current_map.segments and current_map.robot_segment and not current_map.empty_map:
                 return current_map.segments[current_map.robot_segment]
+            # Fallback for GPS-based devices (A1 Pro) without real-time robot_segment:
+            # derive current zone from active_segments when exactly one segment is active
+            if current_map and current_map.segments and not current_map.empty_map and self.started:
+                active = self.active_segments
+                if active and len(active) == 1 and active[0] in current_map.segments:
+                    return current_map.segments[active[0]]
+                if len(current_map.segments) == 1:
+                    return next(iter(current_map.segments.values()))
 
     @property
     def cleaning_sequence(self) -> list[int] | None:

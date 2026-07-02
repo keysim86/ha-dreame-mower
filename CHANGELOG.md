@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.1.24] - 2026-07-02
+
+### Fixed
+- `device.py`: statystyki (`CLEANING_COUNT`, `TOTAL_CLEANED_AREA`, `TOTAL_CLEANING_TIME`) — `_populate_stats_from_history` zawsze uruchamia się i nadpisuje wartości siid:12 gdy historia chmury raportuje ≥ tyle samo sesji; eliminuje rozbieżność między HA a aplikacją Dreame (firmware A1 Pro zaniża liczniki)
+- `device.py`: brak pozycji robota na mapie historycznej — `_build_map_data_from_path_json` ustawia teraz `robot_position` na ostatni znany punkt GPS ścieżki (aktualizacja co ~30 s podczas koszenia)
+- `device.py`: `current_zone` (sensor Current Zone / Current Zone ID) — dodano fallback dla A1 Pro bez real-time `robot_segment`: gdy koszona jest dokładnie jedna strefa lub mapa ma tylko jeden segment, zwraca ten segment jako aktywny; eliminuje stan "niedostępny" podczas koszenia
+
 ## [1.1.23] - 2026-07-02
 
 ### Added
