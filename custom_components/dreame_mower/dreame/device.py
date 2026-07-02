@@ -1559,27 +1559,54 @@ class DreameMowerDevice:
             if not result:
                 return
 
+            # Real piids from the property mapping (robust across models) — CLEANING_TIME,
+            # CLEANED_AREA, CLEANING_START_TIME live under siid:4
+            piid_time = PIID(DreameMowerProperty.CLEANING_TIME, self.property_mapping)
+            piid_area = PIID(DreameMowerProperty.CLEANED_AREA, self.property_mapping)
+            piid_start = PIID(DreameMowerProperty.CLEANING_START_TIME, self.property_mapping)
+
             total_time = 0
             total_area = 0
             count = 0
             first_date = None
+            # Diagnostics: the Dreame app counts more sessions than the firmware counter
+            # and than the retained cloud event log — track the breakdown to see where
+            raw_count = len(result)
+            zero_dur = 0
+            zero_dur_with_area = 0
+            area_incl_zero = 0
 
             for data in result:
                 try:
                     raw = json.loads(data.get("history") or data.get("value", "[]"))
                     props = {item["piid"]: item["value"] for item in raw if "piid" in item and "value" in item}
-                    duration = int(props.get(2) or 0)
-                    area = int(props.get(3) or 0)
-                    timestamp = int(props.get(8) or 0)
+                    duration = int(props.get(piid_time) or 0)
+                    area = int(props.get(piid_area) or 0)
+                    timestamp = int(props.get(piid_start) or 0)
                 except (ValueError, TypeError, json.JSONDecodeError):
                     continue
 
+                area_incl_zero += area
                 if duration > 0:
                     total_time += duration
                     total_area += area
                     count += 1
                     if timestamp and (first_date is None or timestamp < first_date):
                         first_date = timestamp
+                else:
+                    zero_dur += 1
+                    if area > 0:
+                        zero_dur_with_area += 1
+
+            _LOGGER.info(
+                "Stats history breakdown: raw=%d, duration>0=%d, duration==0=%d "
+                "(z area>0=%d), siid:12 count=%s area=%s time=%s; suma area incl. zero=%d m²",
+                raw_count, count, zero_dur, zero_dur_with_area,
+                self.get_property(DreameMowerProperty.CLEANING_COUNT),
+                self.get_property(DreameMowerProperty.TOTAL_CLEANED_AREA),
+                self.get_property(DreameMowerProperty.TOTAL_CLEANING_TIME),
+                area_incl_zero // 100,
+            )
 
             if count > 0:
                 # Merge per property: history and siid:12 both undercount in different

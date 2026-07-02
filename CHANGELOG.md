@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.28] - 2026-07-02
+
+### Fixed
+- `button.py`: przyciski Mow Zone1/2/3 (oraz skróty i backup mapy) były nieaktywne, gdy robot stał zadokowany — A1 Pro po pełnym naładowaniu raportuje `charging_status = not_charging` przy `state = charging_completed`, przez co `started` pozostaje True i `available_fn` blokował przyciski; dostępność oparta teraz o faktyczny ruch (`running`), więc koszenie strefy można uruchomić z doku
+
+### Changed
+- `device.py`: `_populate_stats_from_history` używa piidów z `property_mapping` (`CLEANING_TIME`/`CLEANED_AREA`/`CLEANING_START_TIME`) zamiast zahardkodowanych 2/3/4 — odporne na różnice modeli (dla A1 Pro wartości identyczne: 2/3/8)
+- `device.py`: dodano log diagnostyczny "Stats history breakdown" — surowa liczba zdarzeń chmury vs sesje z `duration>0`, sesje z `duration==0` (i ile z nich ma `area>0`), aktualne wartości siid:12 oraz suma powierzchni łącznie z sesjami zerowymi; pozwala ustalić źródło różnicy między HA a aplikacją (np. 301 vs 317)
+
+### Known issues
+- Liczba koszeń / łączna powierzchnia wciąż mogą być niższe niż w aplikacji Dreame: sam firmware A1 Pro (siid:12) zaniża je względem aplikacji, a chmura przechowuje ograniczoną liczbę zdarzeń sesji. Integracja pokazuje maksimum z (licznik firmware, historia chmury) — najlepszą dostępną wartość. Log "Stats history breakdown" (przy DEBUG dla `custom_components.dreame_mower`) pokazuje pełny rozkład.
+
 ## [1.1.27] - 2026-07-02
 
 ### Fixed
