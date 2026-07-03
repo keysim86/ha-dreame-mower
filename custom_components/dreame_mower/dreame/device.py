@@ -1382,6 +1382,15 @@ class DreameMowerDevice:
 
     def _overlay_robot_position(self, map_data) -> None:
         """Set robot position (and the zone it is in) on a map from the newest GPS track."""
+        # While actively mowing the newest history entry is still the PREVIOUS session
+        # (the cloud publishes the file only after completion) — skip the overlay so a
+        # stale dock-side marker is not shown while the robot is out on the lawn
+        if self.status.started and not self.status.docked:
+            session_start = self.get_property(DreameMowerProperty.CLEANING_START_TIME)
+            history = self.status._cleaning_history
+            newest = history[0].date.timestamp() if history and history[0].date else None
+            if session_start and (newest is None or newest < session_start):
+                return
         point = self._get_last_track_point()
         if not point or map_data.dimensions is None:
             return
@@ -1390,13 +1399,26 @@ class DreameMowerDevice:
         dim = map_data.dimensions
         px = int((x - dim.left) // dim.grid_size)
         py = int((y - dim.top) // dim.grid_size)
-        if (
-            map_data.pixel_type is not None
-            and 0 <= px < dim.width
-            and 0 <= py < dim.height
-        ):
-            seg = int(map_data.pixel_type[px, py])
-            if map_data.segments and seg in map_data.segments:
+        if map_data.pixel_type is not None and map_data.segments:
+            # The dock usually sits just outside the zone polygons — search a small
+            # ring around the position (up to ~2 m) so Current Zone resolves there too
+            seg = None
+            for r in range(0, 5):
+                for dx in range(-r, r + 1):
+                    for dy in range(-r, r + 1):
+                        if max(abs(dx), abs(dy)) != r:
+                            continue
+                        qx, qy = px + dx, py + dy
+                        if 0 <= qx < dim.width and 0 <= qy < dim.height:
+                            v = int(map_data.pixel_type[qx, qy])
+                            if v in map_data.segments:
+                                seg = v
+                                break
+                    if seg is not None:
+                        break
+                if seg is not None:
+                    break
+            if seg is not None:
                 map_data.robot_segment = seg
         _LOGGER.info("Pozycja robota z historii: (%d, %d), strefa=%s", x, y, map_data.robot_segment)
 
@@ -1569,12 +1591,12 @@ class DreameMowerDevice:
             total_area = 0
             count = 0
             first_date = None
-            # Diagnostics: the Dreame app counts more sessions than the firmware counter
-            # and than the retained cloud event log — track the breakdown to see where
+            # The Dreame app counts aborted sessions too (duration==0 but area>0, e.g.
+            # "Trapped") — count any session with activity, deduped by start timestamp
             raw_count = len(result)
             zero_dur = 0
-            zero_dur_with_area = 0
-            area_incl_zero = 0
+            seen_ts = set()
+            zero_props_logged = 0
 
             for data in result:
                 try:
@@ -1586,26 +1608,33 @@ class DreameMowerDevice:
                 except (ValueError, TypeError, json.JSONDecodeError):
                     continue
 
-                area_incl_zero += area
-                if duration > 0:
-                    total_time += duration
-                    total_area += area
-                    count += 1
-                    if timestamp and (first_date is None or timestamp < first_date):
-                        first_date = timestamp
-                else:
+                if duration <= 0:
                     zero_dur += 1
-                    if area > 0:
-                        zero_dur_with_area += 1
+                    if zero_props_logged < 2:
+                        # One-shot diagnostics: the app's total area exceeds the sum of
+                        # piid:3 — inspect what aborted events carry in other piids
+                        _LOGGER.info("Zero-duration event props: %s", props)
+                        zero_props_logged += 1
+                if duration <= 0 and area <= 0:
+                    continue
+                if timestamp:
+                    if timestamp in seen_ts:
+                        continue
+                    seen_ts.add(timestamp)
+
+                total_time += duration
+                total_area += area
+                count += 1
+                if timestamp and (first_date is None or timestamp < first_date):
+                    first_date = timestamp
 
             _LOGGER.info(
-                "Stats history breakdown: raw=%d, duration>0=%d, duration==0=%d "
-                "(z area>0=%d), siid:12 count=%s area=%s time=%s; suma area incl. zero=%d m²",
-                raw_count, count, zero_dur, zero_dur_with_area,
+                "Stats history breakdown: raw=%d, counted=%d (w tym duration==0: %d), "
+                "siid:12 count=%s area=%s time=%s",
+                raw_count, count, zero_dur,
                 self.get_property(DreameMowerProperty.CLEANING_COUNT),
                 self.get_property(DreameMowerProperty.TOTAL_CLEANED_AREA),
                 self.get_property(DreameMowerProperty.TOTAL_CLEANING_TIME),
-                area_incl_zero // 100,
             )
 
             if count > 0:
@@ -1646,10 +1675,13 @@ class DreameMowerDevice:
         if not self.cloud_connected:
             return
         # While mowing refresh periodically so the current session (and the robot
-        # position derived from its GPS track) shows up without waiting for the end
+        # position derived from its GPS track) shows up without waiting for the end.
+        # started && !docked: on the A1 Pro `started` stays True while docked idle
+        # and `running` stays False while mowing, so neither works alone
         forced = self._cleaning_history_update == -1
         refresh_while_running = (
             self.status.started
+            and not self.status.docked
             and time.time() - self._last_cleaning_history_fetch >= 60
         )
         if refresh_while_running or (
@@ -2770,8 +2802,11 @@ class DreameMowerDevice:
             self._map_manager.set_device_running(self.status.running, self.status.docked and not self.status.started)
 
             # Odswiezaj mape z chmury co 30s podczas koszenia (A1 Pro - brak strumieniowania
-            # MQTT); po zmianie historii (koniec sesji) przebuduj raz, by domknac slad i pozycje
-            if self.cloud_connected and (self.status.running or self._history_map_dirty):
+            # MQTT); po zmianie historii (koniec sesji) przebuduj raz, by domknac slad i pozycje.
+            # Uwaga: `running` jest False na A1 Pro w trakcie koszenia (status spoza listy),
+            # wiec aktywne koszenie wykrywamy przez started && !docked
+            actively_mowing = self.status.started and not self.status.docked
+            if self.cloud_connected and (actively_mowing or self._history_map_dirty):
                 last = self._map_manager._map_data.last_updated if self._map_manager._map_data else 0
                 if self._history_map_dirty or not last or (time.time() - last) > 30:
                     self._history_map_dirty = False

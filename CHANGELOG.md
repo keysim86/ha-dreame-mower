@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.29] - 2026-07-03
+
+Diagnoza na żywo podczas koszenia (API HA + logi INFO) — trzy odkrycia: (1) `running` jest False na A1 Pro w trakcie koszenia (status spoza listy odkurzaczowej), (2) chmura ma 318 zdarzeń sesji, z czego 17 przerwanych z `duration==0` — aplikacja je liczy (317), integracja odfiltrowywała (301), (3) chmura publikuje plik śladu GPS dopiero PO zakończeniu sesji, więc pozycji live podczas koszenia nie da się uzyskać z tego API.
+
+### Fixed
+- `device.py`: przebudowa mapy co 30 s podczas koszenia nie działała — bramka sprawdzała `running` (False na A1 Pro w trakcie koszenia); teraz aktywne koszenie wykrywane jako `started && !docked`
+- `device.py`: licznik sesji — zliczane są też sesje przerwane (`duration==0`, `area>0`, np. błąd "Trapped") z deduplikacją po timestampie startu; Mowing Count pokaże ~318 zamiast 301 (aplikacja: 317)
+- `device.py`: Current Zone przy zadokowaniu — dok stoi tuż poza wielokątami stref (`strefa=None` w logach); pozycja jest teraz przyciągana do najbliższej strefy w promieniu ~2 m
+- `button.py`: dostępność przycisków Mow Zone/skróty/backup — predykat `started && !docked` (poprzedni `running` z 1.1.28 pozwalałby klikać strefy w trakcie koszenia)
+- `device.py`: odświeżanie historii co 60 s tylko podczas aktywnego koszenia (nie przy zadokowanym — `started` jest tam True przez quirk firmware)
+
+### Changed
+- `device.py`: podczas aktywnego koszenia pozycja robota NIE jest nanoszona ze starego śladu (marker przy doku byłby mylący, gdy robot jest w polu) — pojawia się po zakończeniu sesji; log "Zero-duration event props" (INFO, 2 pierwsze zdarzenia) do dalszej diagnozy różnicy powierzchni
+
+### Known issues
+- Pozycja robota live podczas koszenia niedostępna — chmura Dreame publikuje ślad GPS dopiero po zakończeniu sesji; pozycja i Current Zone aktualizują się po każdej sesji
+- Total Mowed Area ~55 367 m² vs ~58 324 m² w aplikacji (~5%) — suma pól `area` wszystkich 318 zdarzeń chmury daje wartość integracji; źródło wyższej wartości aplikacji nieustalone (prawdopodobnie serwerowy akumulator Dreame niedostępny przez to API)
+
 ## [1.1.28] - 2026-07-02
 
 ### Fixed

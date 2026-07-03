@@ -149,8 +149,7 @@ def async_update_buttons(
                     DreameMowerButtonEntityDescription(
                         key="shortcut",
                         icon="mdi:play-speed",
-                        available_fn=lambda device: not device.status.running
-                        and not device.status.paused
+                        available_fn=lambda device: not (device.status.started and not device.status.docked)
                         and not device.status.shortcut_task,
                     ),
                     shortcut_id,
@@ -173,8 +172,7 @@ def async_update_buttons(
                         key="backup",
                         icon="mdi:content-save",
                         entity_category=EntityCategory.DIAGNOSTIC,
-                        available_fn=lambda device: not device.status.running
-                        and not device.status.paused
+                        available_fn=lambda device: not (device.status.started and not device.status.docked)
                         and not device.status.map_backup_status,
                     ),
                     map_index,
@@ -198,12 +196,10 @@ def async_update_buttons(
                     DreameMowerButtonEntityDescription(
                         key="mow_zone",
                         icon="mdi:grass",
-                        # `started` stays True on the A1 Pro while docked+idle (firmware
-                        # keeps task_status != COMPLETED), which would wrongly disable the
-                        # zone buttons. Gate on actual motion instead so a zone mow can be
-                        # started from the dock.
-                        available_fn=lambda device: not device.status.running
-                        and not device.status.paused
+                        # A1 Pro quirks: `started` stays True while docked+idle and
+                        # `running` stays False while mowing — "actively mowing" is
+                        # started && !docked, and the buttons should be usable otherwise
+                        available_fn=lambda device: not (device.status.started and not device.status.docked)
                         and not device.status.fast_mapping,
                     ),
                     zone_id,
