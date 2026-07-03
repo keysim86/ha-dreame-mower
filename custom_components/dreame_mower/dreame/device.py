@@ -190,7 +190,6 @@ class DreameMowerDevice:
         self._last_change: float = 0  # Last property change time
         self._last_update_failed: float = 0  # Last update failed time
         self._cleaning_history_update: float = 0  # Cleaning history update time
-        self._last_cleaning_history_fetch: float = 0  # Last actual history fetch from cloud
         self._history_map_dirty: bool = False  # Rebuild history map once after history change
         self._update_fail_count: int = 0  # Update failed counter
         self._map_select_time: float = None
@@ -537,8 +536,15 @@ class DreameMowerDevice:
         for prop in properties:
             if prop in self.property_mapping:
                 mapping = self.property_mapping[prop]
-                # Do not include properties that are not exists on the device
-                if "aiid" not in mapping and (not self._ready or prop.value in self.data):
+                # Do not include properties that are not exists on the device.
+                # Default properties are always re-requested — the initial fetch can fail
+                # when the device is asleep at setup and data would otherwise stay empty
+                # forever (entities for those properties would never become available)
+                if "aiid" not in mapping and (
+                    not self._ready
+                    or prop.value in self.data
+                    or prop in self._default_properties
+                ):
                     property_list.append({"did": str(prop.value), **mapping})
 
         props = property_list.copy()
@@ -1674,34 +1680,28 @@ class DreameMowerDevice:
         """Get and parse the cleaning history from cloud event data and set it to memory"""
         if not self.cloud_connected:
             return
-        # While mowing refresh periodically so the current session (and the robot
-        # position derived from its GPS track) shows up without waiting for the end.
-        # started && !docked: on the A1 Pro `started` stays True while docked idle
-        # and `running` stays False while mowing, so neither works alone
-        forced = self._cleaning_history_update == -1
-        refresh_while_running = (
-            self.status.started
-            and not self.status.docked
-            and time.time() - self._last_cleaning_history_fetch >= 60
-        )
-        if refresh_while_running or (
+        # Event-driven refresh: at connect (-1), when history is empty, or shortly after
+        # the status handlers stamp _cleaning_history_update (session end). The A1 Pro
+        # never reports task_status COMPLETED, so `docked` covers the after-mow case
+        if (
             self._cleaning_history_update != 0
             and (
                 self._cleaning_history_update == -1
                 or self.status._cleaning_history is None
                 or (
                     time.time() - self._cleaning_history_update >= 5
-                    and self.status.task_status is DreameMowerTaskStatus.COMPLETED
+                    and (
+                        self.status.task_status is DreameMowerTaskStatus.COMPLETED
+                        or self.status.docked
+                    )
                 )
             )
         ):
             self._cleaning_history_update = 0
-            self._last_cleaning_history_fetch = time.time()
 
             _LOGGER.info("Get Cleaning History")
-            if forced or not refresh_while_running:
-                # Refresh lifetime stats together with the history (connect + after each task)
-                self._populate_stats_from_history()
+            # Refresh lifetime stats together with the history (connect + after each task)
+            self._populate_stats_from_history()
             try:
                 # Limit the results
                 max = 25
@@ -2801,16 +2801,12 @@ class DreameMowerDevice:
             self._map_manager.set_update_interval(self._map_update_interval)
             self._map_manager.set_device_running(self.status.running, self.status.docked and not self.status.started)
 
-            # Odswiezaj mape z chmury co 30s podczas koszenia (A1 Pro - brak strumieniowania
-            # MQTT); po zmianie historii (koniec sesji) przebuduj raz, by domknac slad i pozycje.
-            # Uwaga: `running` jest False na A1 Pro w trakcie koszenia (status spoza listy),
-            # wiec aktywne koszenie wykrywamy przez started && !docked
-            actively_mowing = self.status.started and not self.status.docked
-            if self.cloud_connected and (actively_mowing or self._history_map_dirty):
-                last = self._map_manager._map_data.last_updated if self._map_manager._map_data else 0
-                if self._history_map_dirty or not last or (time.time() - last) > 30:
-                    self._history_map_dirty = False
-                    self._build_map_from_cloud_data()
+            # Chmura publikuje slad GPS dopiero PO zakonczeniu sesji, wiec przebudowa mapy
+            # w trakcie koszenia nic nie wnosi (same timeouty MAP batch); przebuduj raz po
+            # kazdej realnej zmianie historii (koniec sesji) — domyka slad i pozycje robota
+            if self.cloud_connected and self._history_map_dirty:
+                self._history_map_dirty = False
+                self._build_map_from_cloud_data()
 
         if self.cloud_connected:
             self._request_cleaning_history()

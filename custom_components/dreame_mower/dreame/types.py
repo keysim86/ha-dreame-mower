@@ -2093,6 +2093,24 @@ class CleaningHistory:
                                 if v[1] in SegmentNeglectReason._value2member_map_
                             }
 
+    def __eq__(self, other) -> bool:
+        # Value equality — without it every history refresh compares by identity,
+        # reports "Cleaning History Changed" and triggers map rebuild storms
+        return (
+            isinstance(other, CleaningHistory)
+            and self.date == other.date
+            and self.file_name == other.file_name
+            and self.cleaning_time == other.cleaning_time
+            and self.cleaned_area == other.cleaned_area
+            and self.status == other.status
+            and self.completed == other.completed
+        )
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+
+    __hash__ = object.__hash__
+
 
 class RecoveryMapInfo:
     def __init__(self, map_id, map_info) -> None:

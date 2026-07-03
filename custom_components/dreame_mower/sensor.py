@@ -14,7 +14,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.icon import icon_for_battery_level
@@ -327,11 +327,27 @@ async def async_setup_entry(
 ) -> None:
     """Set up Dreame Mower sensor based on a config entry."""
     coordinator: DreameMowerDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        DreameMowerSensorEntity(coordinator, description)
-        for description in SENSORS
-        if description.exists_fn(description, coordinator.device)
-    )
+
+    # Entities are created only when their property exists in device data. When the
+    # device is asleep at setup the initial property fetch fails and most sensors
+    # would never be created — re-check on every coordinator update and add the ones
+    # whose properties have shown up since (MQTT push or a later successful poll)
+    created: set[int] = set()
+
+    @callback
+    def _async_add_new_sensors() -> None:
+        new_entities = []
+        for index, description in enumerate(SENSORS):
+            if index in created:
+                continue
+            if description.exists_fn(description, coordinator.device):
+                created.add(index)
+                new_entities.append(DreameMowerSensorEntity(coordinator, description))
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_new_sensors()
+    coordinator.async_add_listener(_async_add_new_sensors)
 
 
 class DreameMowerSensorEntity(DreameMowerEntity, SensorEntity):

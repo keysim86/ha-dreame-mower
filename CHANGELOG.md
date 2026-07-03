@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.30] - 2026-07-03
+
+Regresja z 1.1.29: po restarcie HA w momencie, gdy robot spał, sensory Battery Level / State / Charging Status pozostawały trwale "niedostępne" (mimo że lawn_mower działał). Przyczyna wielowarstwowa zdiagnozowana na żywo przez API HA.
+
+### Fixed
+- `sensor.py`: encje sensorów tworzone są teraz dynamicznie — jeśli initial fetch properties padnie (robot w uśpieniu przy starcie HA), sensory powstaną automatycznie, gdy tylko property pojawi się w danych (push MQTT lub udany poll); wcześniej wymagały reloadu integracji przy obudzonym robocie
+- `device.py`: polling ponawia teraz brakujące default properties — dotąd po `_ready` odpytywane były tylko propy już obecne w `self.data`, więc nieudany initial fetch zostawiał je puste na zawsze
+- `dreame/types.py`: `CleaningHistory.__eq__` — porównanie było po tożsamości obiektów, więc każde odświeżenie historii raportowało "Cleaning History Changed" i wyzwalało lawinę przebudów mapy oraz pobrań plików z chmury (timeouty po 15 s blokujące pętlę aktualizacji)
+- `device.py`: odświeżanie historii po sesji działa też na A1 Pro — warunek `task_status == COMPLETED` (nigdy nie raportowany przez ten firmware) rozszerzony o `docked`
+
+### Changed
+- `device.py`: usunięta przebudowa mapy co 30 s i odświeżanie historii co 60 s podczas koszenia (z 1.1.29) — chmura publikuje ślad GPS dopiero po zakończeniu sesji, więc generowały wyłącznie timeouty MAP batch obciążające integrację; mapa przebudowuje się raz po każdej realnej zmianie historii
+
 ## [1.1.29] - 2026-07-03
 
 Diagnoza na żywo podczas koszenia (API HA + logi INFO) — trzy odkrycia: (1) `running` jest False na A1 Pro w trakcie koszenia (status spoza listy odkurzaczowej), (2) chmura ma 318 zdarzeń sesji, z czego 17 przerwanych z `duration==0` — aplikacja je liczy (317), integracja odfiltrowywała (301), (3) chmura publikuje plik śladu GPS dopiero PO zakończeniu sesji, więc pozycji live podczas koszenia nie da się uzyskać z tego API.
