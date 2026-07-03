@@ -1257,6 +1257,12 @@ class DreameMowerDevice:
             width = max(1, (bx2 - bx1) // grid_size + 1)
             height = max(1, (by2 - by1) // grid_size + 1)
 
+            # Corrupt boundary data must not allocate a huge raster (OOM guard,
+            # same limit as in the path builder)
+            if width * height > 4_000_000:
+                log("MAP JSON: raster %dx%d przekracza limit, boundary uszkodzone?", width, height)
+                return None
+
             pixel_type = np.full((width, height), MapPixelType.OUTSIDE.value, dtype=np.uint8)
 
             segments = {}

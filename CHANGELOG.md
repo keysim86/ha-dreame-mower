@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.31] - 2026-07-03
+
+### Fixed
+- `device.py`: bezpiecznik OOM w `_build_map_data_from_zones_json` — uszkodzone dane `boundary` z chmury mogły spowodować alokację gigantycznego rastra numpy (gigabajty RAM); dodano limit 4 mln pikseli, ten sam co w builderze ścieżki
+
 ## [1.1.30] - 2026-07-03
 
 Regresja z 1.1.29: po restarcie HA w momencie, gdy robot spał, sensory Battery Level / State / Charging Status pozostawały trwale "niedostępne" (mimo że lawn_mower działał). Przyczyna wielowarstwowa zdiagnozowana na żywo przez API HA.
