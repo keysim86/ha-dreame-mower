@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- `device.py`: `docked` jest prawdą także wtedy, gdy surowy `STATE` mówi „w stacji” (ładowanie / naładowana / smart charging). A1 Pro po pełnym naładowaniu raportuje między doładowaniami (~8 min co ~2 h) `charging_status = not_charging`, więc `docked` było fałszem przez większość czasu postoju w stacji. Skutek: przyciski „Mow zone” były niedostępne (nie dało się z HA uruchomić koszenia strefy), a odświeżanie historii, mapa i ikona traktowały robota jak poza stacją. Wartość czytana wprost z property — `state` sam zależy od `docked`
+
 ## [1.1.31] - 2026-07-03
 
 ### Fixed

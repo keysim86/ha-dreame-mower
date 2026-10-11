@@ -5359,8 +5359,29 @@ class DreameMowerDeviceStatus:
             (
                 self.charging
                 or self.charging_status is DreameMowerChargingStatus.CHARGING_COMPLETED
+                # A1 Pro: after a full charge CHARGING_STATUS reads NOT_CHARGING between
+                # top-ups (~8 min every ~2 h) while STATE stays CHARGING_COMPLETED — the
+                # robot is still in the station
+                or self._station_state
             )
             and not (self.running and not self.returning and not self.fast_mapping and not self.cruising)
+        )
+
+    @property
+    def _station_state(self) -> bool:
+        """Return true when the raw STATE property places the robot in the station.
+
+        Read straight from the property — `state` itself depends on `docked`.
+        """
+        value = self._get_property(DreameMowerProperty.STATE)
+        if value is None:
+            return False
+        if int(value) > 18 and not self._capability.new_state and value in DreameMowerStateOld._value2member_map_:
+            value = DreameMowerState[DreameMowerStateOld(value).name].value
+        return value in (
+            DreameMowerState.CHARGING.value,
+            DreameMowerState.CHARGING_COMPLETED.value,
+            DreameMowerState.SMART_CHARGING.value,
         )
 
     @property
