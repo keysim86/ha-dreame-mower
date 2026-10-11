@@ -33,6 +33,7 @@ Start, stop, and dock your mower, monitor battery and charging status, and more 
 | Scheduled Clean | Binary Sensor | Whether a scheduled mowing is active |
 | Do Not Disturb | Switch | Enable/disable DnD mode |
 | Stop Mowing | Button | Stop current mowing task and return to dock |
+| Mow &lt;zone&gt; | Button | Start mowing a single zone (one button per zone; available while the mower is in the station or idle) |
 | Error notification | Persistent notification | Automatic alert when the mower reports an error (translated in FR/EN) |
 
 ## Installation
