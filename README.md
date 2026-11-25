@@ -3,6 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/keysim86/ha-dreame-mower?style=flat-square&label=release)](https://github.com/keysim86/ha-dreame-mower/releases)
 [![Downloads](https://img.shields.io/github/downloads/keysim86/ha-dreame-mower/total?style=flat-square&label=downloads&color=orange)](https://github.com/keysim86/ha-dreame-mower/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)](https://hacs.xyz/)
+[![HA](https://img.shields.io/badge/Home%20Assistant-2023.6%2B-blue?style=flat-square)](https://www.home-assistant.io/)
+[![License](https://img.shields.io/github/license/keysim86/ha-dreame-mower?style=flat-square)](LICENSE)
 
 > ⚠️ **Scope of support**
 >
